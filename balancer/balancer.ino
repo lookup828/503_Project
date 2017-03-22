@@ -94,8 +94,6 @@ void setup() {
 
     //delay 10 seconds
     delay(10000);
-    //set on LED
-    digitalWrite(ledPin, HIGH);
 
 }
 
