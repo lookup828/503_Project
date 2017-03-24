@@ -15,9 +15,12 @@ DualMC33926MotorShield md;
 #define PWM_L 9
 #define PWM_R 10
 
-#define INTERRUPT_PIN 2  // use pin 2 on Arduino Uno & most boards
+#define encoder0PinAI  2
+#define encoder0PinBI  3
+#define encoder0PinA  4
+#define encoder0PinB  5
 
-//ir pins are going to be digital 3,5,6,11
+//ir pins are going to be digital 2,3,5,6
 
 float K=50;
 float B=50;
@@ -71,7 +74,8 @@ void setup() {
     // initialize device
     Serial.println(F("Initializing I2C devices..."));
     mpu.initialize();
-    pinMode(INTERRUPT_PIN, INPUT);
+
+    
 
     // verify connection
     Serial.println(F("Testing device connections..."));
