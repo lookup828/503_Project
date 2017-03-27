@@ -6,8 +6,6 @@
 #endif
 #include "DualMC33926MotorShield.h"
 
-//Test  Github Andrew
-
 MPU6050 mpu;
 DualMC33926MotorShield md;
 
@@ -15,12 +13,15 @@ DualMC33926MotorShield md;
 #define PWM_L 9
 #define PWM_R 10
 
-#define encoder0PinAI  2
-#define encoder0PinBI  3
-#define encoder0PinA  4
-#define encoder0PinB  5
+//IR pin definitions
+#define encoderPinAI  2
+#define encoderPinBI  3
+#define encoderPinA  4
+#define encoderPinB  5
 
-//ir pins are going to be digital 2,3,5,6
+//encoder trackers
+volatile unsigned long encoderPosA = 0;
+volatile unsigned long encoderPosB = 0;
 
 float K=50;
 float B=50;
@@ -97,6 +98,19 @@ void setup() {
     //Pin stuff
     pinMode(PWM_L, OUTPUT);//
     pinMode(PWM_R, OUTPUT);//
+
+    Serial.println("Setting up IR Pins");
+    pinMode(encoderPinAI, INPUT); 
+    digitalWrite(encoderPinAI, HIGH);       // turn on pull-up resistor
+    pinMode(encoderPinA, INPUT); 
+    digitalWrite(encoderPinA, HIGH);       // turn on pull-up resistor
+    pinMode(encoderPinBI, INPUT); 
+    digitalWrite(encoderPinBI, HIGH);       // turn on pull-up resistor
+    pinMode(encoderPinB, INPUT); 
+    digitalWrite(encoderPinB, HIGH);       // turn on pull-up resistor
+
+    attachInterrupt(0, encoderA, CHANGE);//Bind interupt pin2
+    attachInterrupt(1, encoderB, CHANGE);//Bind interupt pin3
 
     //delay 10 seconds
     delay(10000);
@@ -184,6 +198,70 @@ void set_Motors(int l_val, int r_val){
   
       md.setM1Speed(l_val);
       md.setM2Speed(r_val);
+}
+
+void encoderA(){
+  if (digitalRead(encoderPinAI) == HIGH) 
+  {   // found a low-to-high on channel A
+    if (digitalRead(encoderPinA) == LOW) 
+    {  // check channel B to see which way
+      Serial.println("Counterclockwise and backward");                                      // encoder is turning
+      encoderPosA = encoderPosA - 1;         // CCW
+    } 
+    else 
+    {
+      Serial.println("Clockwise and forward");
+      encoderPosA = encoderPosA + 1;         // CW
+    }
+  }
+  else                                        // found a high-to-low on channel A
+  { 
+    if (digitalRead(encoderPinA) == LOW) 
+    {   // check channel B to see which way
+                                              // encoder is turning  
+      Serial.println("Clockwise and forward");
+      encoderPosA = encoderPosA + 1;          // CW
+    } 
+    else 
+    {
+      Serial.println("Counterclockwise and backward");
+      encoderPosA = encoderPosA - 1;          // CCW
+    }
+
+  }
+  Serial.println (encoderPosA, DEC);   
+}
+
+void encoderB(){
+  if (digitalRead(encoderPinBI) == HIGH) 
+  {   // found a low-to-high on channel A
+    if (digitalRead(encoderPinB) == LOW) 
+    {  // check channel B to see which way
+      Serial.println("Counterclockwise and backward");                                      // encoder is turning
+      encoderPosB = encoderPosB - 1;         // CCW
+    } 
+    else 
+    {
+      Serial.println("Clockwise and forward");
+      encoderPosB = encoderPosB + 1;         // CW
+    }
+  }
+  else                                        // found a high-to-low on channel A
+  { 
+    if (digitalRead(encoderPinB) == LOW) 
+    {   // check channel B to see which way
+                                              // encoder is turning  
+      Serial.println("Clockwise and forward");
+      encoderPosB = encoderPosB + 1;          // CW
+    } 
+    else 
+    {
+      Serial.println("Counterclockwise and backward");
+      encoderPosB = encoderPosB - 1;          // CCW
+    }
+
+  }
+  Serial.println (encoderPosB, DEC);   
 }
 
 
