@@ -97,7 +97,8 @@ void setup() {
     attachInterrupt(1, encoderB, CHANGE);//Bind interupt pin3
 
     //delay 10 seconds
-    delay(10000);
+    //delay(10000);
+    Serial.print("Done with setup");
 
 }
 
@@ -124,15 +125,15 @@ void loop() {
           angular_rate=0;
         }
         
-        Serial.print("Gyro: ");
-        Serial.print(angular_rate);
-        Serial.print("   Angle: ");
-        Serial.print(ypr[1]);
+//        Serial.print("Gyro: ");
+//        Serial.print(angular_rate);
+//        Serial.print("   Angle: ");
+//        Serial.print(ypr[1]);
         
       //update our odometry values every loop
       update_Odometry();
       //calculate pwm
-      pwm_out();
+      //pwm_out();
 
 }
 
@@ -167,6 +168,7 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
+   Serial.println("I Happened First Bitch");
   if (digitalRead(encoderPinAI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinA) == LOW) 
@@ -200,6 +202,7 @@ void encoderA(){
 
 //interupt method for other wheel
 void encoderB(){
+  Serial.println("I Happen");
   if (digitalRead(encoderPinBI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinB) == LOW) 
@@ -239,8 +242,8 @@ void update_Odometry(){
   theta = (distanceLeftWheel + distanceRightWheel) /2 ;                                 // incremental linear displacement of the robot's centerpoint C
   Orientation_change = (distanceRightWheel - distanceLeftWheel)/WHEELBASE;              // the robot's incremental change of orientation , where b is the wheelbase of the mobile robot ,
   Orientation = Orientation + Orientation_change ;                                     //  The robot's new relative orientation 
-  x = x + centerpoint * cos(Orientation);                                              // the relative position of the centerpoint for mobile robot 
-  y = y + centerpoint * sin(Orientation);
+  x = x + theta * cos(Orientation);                                              // the relative position of the centerpoint for mobile robot 
+  y = y + theta * sin(Orientation);
   
   //if statments to make sure theta is within 2 Pi
   if(theta > 6.28)
