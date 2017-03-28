@@ -41,11 +41,9 @@ float K=50;
 float B=50;
 int pwm,pwm_l,pwm_r;
 int i =0;
-bool blinkState = false;
 float angle, angular_rate, angle_offset;
 // MPU control/status vars
 bool dmpReady = false;  // set true if DMP init was successful
-uint8_t mpuIntStatus;   // holds actual interrupt status byte from MPU
 uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
 uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
 uint16_t fifoCount;     // count of all bytes currently in FIFO
@@ -87,27 +85,21 @@ void setup() {
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // initialize device
-    Serial.println(F("Initializing I2C devices..."));
+    Serial.println(F("Initializing MPU devices..."));
     mpu.initialize();
-
-    
-
-    // verify connection
-    Serial.println(F("Testing device connections..."));
-    Serial.println(mpu.testConnection() ? F("MPU6050 connection successful") : F("MPU6050 connection failed"));
-
-    //Empty the Buffer
-    while (Serial.available() && Serial.read()); // empty buffer
-
-    // load and configure the DMP
-    Serial.println(F("Initializing DMP..."));
-    devStatus = mpu.dmpInitialize();
-
-    // supply your own gyro offsets here, scaled for min sensitivity
     mpu.setXGyroOffset(129);
     mpu.setYGyroOffset(-26); 
     mpu.setZGyroOffset(10);
     mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
+    mpu.getMotion();
+    
+
+
+    //Empty the Buffer
+    while (Serial.available() && Serial.read()); // empty buffer
+
+
+
 
     //Pin stuff
     pinMode(PWM_L, OUTPUT);//
@@ -139,13 +131,14 @@ void setup() {
 
 void loop() {
     
-        #ifdef OUTPUT_READABLE_YAWPITCHROLL
-            // display Euler angles in degrees
-            mpu.dmpGetQuaternion(&q, fifoBuffer);
-            mpu.dmpGetGravity(&gravity, &q);
-            mpu.dmpGetGyro(gyro, fifoBuffer);
-            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-        #endif
+//        #ifdef OUTPUT_READABLE_YAWPITCHROLL
+//            // display Euler angles in degrees
+//            mpu.dmpGetQuaternion(&q, fifoBuffer);
+//            mpu.dmpGetGravity(&gravity, &q);
+//            mpu.dmpGetGyro(gyro, fifoBuffer);
+//            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
+//        #endif
+        mpu.getMotion(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
         
         angle = ypr[1] + (.084); 
         angular_rate = -((double)gyro[1]/131.0); // converted to radian
