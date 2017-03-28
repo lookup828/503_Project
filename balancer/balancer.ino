@@ -42,20 +42,6 @@ float B=50;
 int pwm,pwm_l,pwm_r;
 int i =0;
 float angle, angular_rate, angle_offset;
-// MPU control/status vars
-bool dmpReady = false;  // set true if DMP init was successful
-uint8_t devStatus;      // return status after each device operation (0 = success, !0 = error)
-uint16_t packetSize;    // expected DMP packet size (default is 42 bytes)
-uint16_t fifoCount;     // count of all bytes currently in FIFO
-uint8_t fifoBuffer[64]; // FIFO storage buffer
-
-// orientation/motion vars
-Quaternion q;           // [w, x, y, z]         quaternion container
-VectorInt16 aa;         // [x, y, z]            accel sensor measurements
-VectorInt16 aaReal;     // [x, y, z]            gravity-free accel sensor measurements
-VectorInt16 aaWorld;    // [x, y, z]            world-frame accel sensor measurements
-VectorFloat gravity;    // [x, y, z]            gravity vector
-float euler[3];         // [psi, theta, phi]    Euler angle container
 int16_t gyro[3];        // [x, y, z]            gyro vector
 float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -79,8 +65,6 @@ void setup() {
     #endif
 
     // initialize serial communication
-    // (115200 chosen because it is required for Teapot Demo output, but it's
-    // really up to you depending on your project)
     Serial.begin(115200);
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
@@ -91,15 +75,9 @@ void setup() {
     mpu.setYGyroOffset(-26); 
     mpu.setZGyroOffset(10);
     mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
-    mpu.getMotion();
-    
-
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
-
-
-
 
     //Pin stuff
     pinMode(PWM_L, OUTPUT);//
