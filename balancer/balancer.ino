@@ -19,10 +19,24 @@ DualMC33926MotorShield md;
 #define encoderPinA  4
 #define encoderPinB  5
 
+//ODOMETRY VARIABLES
 //encoder trackers
-volatile unsigned long encoderPosA = 0;
-volatile unsigned long encoderPosB = 0;
+volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
+volatile int encoderRightPosition = 0;
 
+float  DIAMETER  = 61  ;         // wheel diameter (in mm)  NEED TO CHANGE TO OURS
+
+float distanceLeftWheel, distanceRightWheel, Dc, Orientation_change;
+
+float ENCODER_RESOLUTION = 333.3;      //encoder resolution (in pulses per revolution)  where in Rover 5,  1000 state changes per 3 wheel rotations NEED TO CHANGE TO OURS
+
+int x = 0;           // x initial coordinate of mobile robot 
+int y = 0;           // y initial coordinate of mobile robot 
+float Orientation  = 0;       // The initial orientation of mobile robot 
+float WHEELBASE=183  ;       //  the wheelbase of the mobile robot in mm, NEED TO CHANGE TO OURS
+float CIRCUMSTANCE =PI * DIAMETER  ;
+
+//BALANCING VARIABLES
 float K=50;
 float B=50;
 int pwm,pwm_l,pwm_r;
@@ -138,34 +152,13 @@ void loop() {
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
         }
-
-        //change k and b values while running TAKE OUT FOR FINAL
-        if(Serial.available()> 1){
-         char c = Serial.read();
-          switch(c){
-            case 'q':
-              K += 1;
-            break;
-
-            case 'w':
-              K -= 1;
-            break;
-
-            case 'a':
-              B += 1;
-            break;
-
-            case 's':
-              B -= 1;
-            break;
-          }
-        }
         
         Serial.print("Gyro: ");
         Serial.print(angular_rate);
         Serial.print("   Angle: ");
         Serial.print(ypr[1]);
 
+      odometry();
       //calculate pwm
       pwm_out();
 
@@ -200,18 +193,19 @@ void set_Motors(int l_val, int r_val){
       md.setM2Speed(r_val);
 }
 
+//interupt method for first wheel
 void encoderA(){
   if (digitalRead(encoderPinAI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinA) == LOW) 
     {  // check channel B to see which way
-      Serial.println("Counterclockwise and backward");                                      // encoder is turning
-      encoderPosA = encoderPosA - 1;         // CCW
+      Serial.println("Counterclockwise and backward");
+      encoderLeftPosition = encoderLeftPosition - 1;
     } 
     else 
     {
       Serial.println("Clockwise and forward");
-      encoderPosA = encoderPosA + 1;         // CW
+      encoderLeftPosition = encoderLeftPosition + 1;         
     }
   }
   else                                        // found a high-to-low on channel A
@@ -220,30 +214,31 @@ void encoderA(){
     {   // check channel B to see which way
                                               // encoder is turning  
       Serial.println("Clockwise and forward");
-      encoderPosA = encoderPosA + 1;          // CW
+      encoderLeftPosition = encoderLeftPosition + 1;          
     } 
     else 
     {
       Serial.println("Counterclockwise and backward");
-      encoderPosA = encoderPosA - 1;          // CCW
+      encoderLeftPosition = encoderLeftPosition - 1;         
     }
 
   }
   Serial.println (encoderPosA, DEC);   
 }
 
+//interupt method for other wheel
 void encoderB(){
   if (digitalRead(encoderPinBI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinB) == LOW) 
     {  // check channel B to see which way
-      Serial.println("Counterclockwise and backward");                                      // encoder is turning
-      encoderPosB = encoderPosB - 1;         // CCW
+      Serial.println("Counterclockwise and backward");      // encoder is turning
+      encoderRightPosition = encoderRightPosition - 1;         
     } 
     else 
     {
       Serial.println("Clockwise and forward");
-      encoderPosB = encoderPosB + 1;         // CW
+      encoderRightPosition = encoderRightPosition + 1;         // CW
     }
   }
   else                                        // found a high-to-low on channel A
@@ -252,16 +247,29 @@ void encoderB(){
     {   // check channel B to see which way
                                               // encoder is turning  
       Serial.println("Clockwise and forward");
-      encoderPosB = encoderPosB + 1;          // CW
+      encoderRightPosition = encoderRightPosition + 1;          
     } 
     else 
     {
       Serial.println("Counterclockwise and backward");
-      encoderPosB = encoderPosB - 1;          // CCW
+      encoderRightPosition = encoderRightPosition - 1;         
     }
 
   }
   Serial.println (encoderPosB, DEC);   
+}
+
+//Calculate Odometry Values
+void odometry(){
+  
+  Dl= Pi * dia * (encoderLPos/ ER);       // Dl & Dr are travel distance for the left and right wheel respectively 
+  Dr= Pi * dia * (encoderRPos/ ER);     // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
+  Dc=( Dl + Dr) /2 ;            // incremental linear displacement of the robot's centerpoint C
+  Ori_ch=(Dr - Dl)/b;          // the robot's incremental change of orientation , where b is the wheelbase of the mobile robot ,
+  Ori = Ori + Ori_ch ;          //  The robot's new relative orientation 
+  x = x + Dc * cos (Ori);      // the relative position of the centerpoint for mobile robot 
+  y = y + Dc * sin(Ori);
+    
 }
 
 
