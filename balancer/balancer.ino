@@ -16,25 +16,25 @@ DualMC33926MotorShield md;
 //IR pin definitions
 #define encoderPinAI  2
 #define encoderPinBI  3
-#define encoderPinA  4
-#define encoderPinB  5
+#define encoderPinA  5
+#define encoderPinB  6
 
 //ODOMETRY VARIABLES
 //encoder trackers
 volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
-float  DIAMETER  = 61  ;         // wheel diameter (in mm)  NEED TO CHANGE TO OURS
-
+float  DIAMETER  = 58;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, Dc, Orientation_change;
 
-float ENCODER_RESOLUTION = 333.3;      //encoder resolution (in pulses per revolution)  where in Rover 5,  1000 state changes per 3 wheel rotations NEED TO CHANGE TO OURS
+float ENCODER_RESOLUTION = 36;      //encoder resolution (in pulses per revolution)
 
 int x = 0;           // x initial coordinate of mobile robot 
 int y = 0;           // y initial coordinate of mobile robot 
 float Orientation  = 0;       // The initial orientation of mobile robot 
-float WHEELBASE=183  ;       //  the wheelbase of the mobile robot in mm, NEED TO CHANGE TO OURS
-float CIRCUMSTANCE =PI * DIAMETER  ;
+float WHEELBASE = 5;       //  the wheelbase of the mobile robot in mm
+float CIRCUMSTANCE =PI * DIAMETER;
+float Dl, Dr, theta, Ori_ch;
 
 //BALANCING VARIABLES
 float K=50;
@@ -43,7 +43,7 @@ int pwm,pwm_l,pwm_r;
 int i =0;
 float angle, angular_rate, angle_offset;
 int16_t gyro[3];        // [x, y, z]            gyro vector
-float ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
 
 
@@ -116,7 +116,7 @@ void loop() {
 //            mpu.dmpGetGyro(gyro, fifoBuffer);
 //            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 //        #endif
-        mpu.getMotion(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
+        mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
         
         angle = ypr[1] + (.084); 
         angular_rate = -((double)gyro[1]/131.0); // converted to radian
@@ -128,8 +128,9 @@ void loop() {
         Serial.print(angular_rate);
         Serial.print("   Angle: ");
         Serial.print(ypr[1]);
-
-      odometry();
+        
+      //update our odometry values every loop
+      update_Odometry();
       //calculate pwm
       pwm_out();
 
@@ -194,7 +195,7 @@ void encoderA(){
     }
 
   }
-  Serial.println (encoderPosA, DEC);   
+  Serial.println (encoderLeftPosition, DEC);   
 }
 
 //interupt method for other wheel
@@ -227,19 +228,25 @@ void encoderB(){
     }
 
   }
-  Serial.println (encoderPosB, DEC);   
+  Serial.println (encoderRightPosition, DEC);   
 }
 
 //Calculate Odometry Values
-void odometry(){
+void update_Odometry(){
   
-  Dl= Pi * dia * (encoderLPos/ ER);       // Dl & Dr are travel distance for the left and right wheel respectively 
-  Dr= Pi * dia * (encoderRPos/ ER);     // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
-  Dc=( Dl + Dr) /2 ;            // incremental linear displacement of the robot's centerpoint C
-  Ori_ch=(Dr - Dl)/b;          // the robot's incremental change of orientation , where b is the wheelbase of the mobile robot ,
-  Ori = Ori + Ori_ch ;          //  The robot's new relative orientation 
-  x = x + Dc * cos (Ori);      // the relative position of the centerpoint for mobile robot 
-  y = y + Dc * sin(Ori);
+  distanceLeftWheel = CIRCUMSTANCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
+  distanceRightWheel = CIRCUMSTANCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
+  theta = (distanceLeftWheel + distanceRightWheel) /2 ;                                 // incremental linear displacement of the robot's centerpoint C
+  Orientation_change = (distanceRightWheel - distanceLeftWheel)/WHEELBASE;              // the robot's incremental change of orientation , where b is the wheelbase of the mobile robot ,
+  Orientation = Orientation + Orientation_change ;                                     //  The robot's new relative orientation 
+  x = x + centerpoint * cos(Orientation);                                              // the relative position of the centerpoint for mobile robot 
+  y = y + centerpoint * sin(Orientation);
+  
+  //if statments to make sure theta is within 2 Pi
+  if(theta > 6.28)
+    theta -= 6.28;
+  else if(theta < -6.28)
+    theta += 6.28;
     
 }
 
