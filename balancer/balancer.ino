@@ -34,7 +34,7 @@ int y = 0;           // y initial coordinate of mobile robot
 float Orientation  = 0;       // The initial orientation of mobile robot 
 float WHEELBASE = 5;       //  the wheelbase of the mobile robot in mm
 float CIRCUMSTANCE =PI * DIAMETER;
-float Dl, Dr, theta, Ori_ch;
+float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
 float K=50;
@@ -70,11 +70,11 @@ void setup() {
 
     // initialize device
     Serial.println(F("Initializing MPU devices..."));
-    mpu.initialize();
-    mpu.setXGyroOffset(129);
-    mpu.setYGyroOffset(-26); 
-    mpu.setZGyroOffset(10);
-    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
+//    mpu.initialize();
+//    mpu.setXGyroOffset(129);
+//    mpu.setYGyroOffset(-26); 
+//    mpu.setZGyroOffset(10);
+//    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
@@ -117,13 +117,13 @@ void loop() {
 //            mpu.dmpGetGyro(gyro, fifoBuffer);
 //            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 //        #endif
-        mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
-        
-        angle = ypr[1] + (.084); 
-        angular_rate = -((double)gyro[1]/131.0); // converted to radian
-        if(angular_rate<0.01 and angular_rate>-0.01){
-          angular_rate=0;
-        }
+//        mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
+//        
+//        angle = ypr[1] + (.084); 
+//        angular_rate = -((double)gyro[1]/131.0); // converted to radian
+//        if(angular_rate<0.01 and angular_rate>-0.01){
+//          angular_rate=0;
+//        }
         
 //        Serial.print("Gyro: ");
 //        Serial.print(angular_rate);
@@ -239,17 +239,17 @@ void update_Odometry(){
   
   distanceLeftWheel = CIRCUMSTANCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
   distanceRightWheel = CIRCUMSTANCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
-  theta = (distanceLeftWheel + distanceRightWheel) /2 ;                                 // incremental linear displacement of the robot's centerpoint C
-  Orientation_change = (distanceRightWheel - distanceLeftWheel)/WHEELBASE;              // the robot's incremental change of orientation , where b is the wheelbase of the mobile robot ,
-  Orientation = Orientation + Orientation_change ;                                     //  The robot's new relative orientation 
-  x = x + theta * cos(Orientation);                                              // the relative position of the centerpoint for mobile robot 
-  y = y + theta * sin(Orientation);
+  avg_dist = (distanceLeftWheel + distanceRightWheel) /2 ;                                 // incremental linear displacement of the robot's centerpoint C
+  theta = atan2(distanceRightWheel, distanceLeftWheel);              // the robot's incremental change of orientation , where b is the wheelbase of the mobile robot ,
+  Orientation = Orientation + theta;                                     //  The robot's new relative orientation 
+  x = x + avg_dist * cos(Orientation);                                              // the relative position of the centerpoint for mobile robot 
+  y = y + avg_dist * sin(Orientation);
   
   //if statments to make sure theta is within 2 Pi
-  if(theta > 6.28)
-    theta -= 6.28;
-  else if(theta < -6.28)
-    theta += 6.28;
+  if(Orientation > PI)
+    Orientation -= PI;
+  else if(Orientation < PI)
+    Orientation += PI;
     
 }
 
