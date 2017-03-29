@@ -70,11 +70,11 @@ void setup() {
 
     // initialize device
     Serial.println(F("Initializing MPU devices..."));
-//    mpu.initialize();
-//    mpu.setXGyroOffset(129);
-//    mpu.setYGyroOffset(-26); 
-//    mpu.setZGyroOffset(10);
-//    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
+    mpu.initialize();
+    mpu.setXGyroOffset(129);
+    mpu.setYGyroOffset(-26); 
+    mpu.setZGyroOffset(10);
+    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
@@ -117,23 +117,23 @@ void loop() {
 //            mpu.dmpGetGyro(gyro, fifoBuffer);
 //            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 //        #endif
-//        mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
-//        
-//        angle = ypr[1] + (.084); 
-//        angular_rate = -((double)gyro[1]/131.0); // converted to radian
-//        if(angular_rate<0.01 and angular_rate>-0.01){
-//          angular_rate=0;
-//        }
+        mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
         
-//        Serial.print("Gyro: ");
-//        Serial.print(angular_rate);
-//        Serial.print("   Angle: ");
-//        Serial.print(ypr[1]);
+        angle = ypr[1] + (.084); 
+        angular_rate = -((double)gyro[1]/131.0); // converted to radian
+        if(angular_rate<0.01 and angular_rate>-0.01){
+          angular_rate=0;
+        }
+        
+        Serial.print("Gyro: ");
+        Serial.print(angular_rate);
+        Serial.print("   Angle: ");
+        Serial.print(ypr[1]);
         
       //update our odometry values every loop
       update_Odometry();
       //calculate pwm
-      //pwm_out();
+      pwm_out();
 
 }
 
