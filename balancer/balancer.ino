@@ -19,6 +19,17 @@ DualMC33926MotorShield md;
 #define encoderPinA  5
 #define encoderPinB  6
 
+//MOVEMENT VARIABLES
+int paths[4][3] = {{0,0,0},{0,0,0},{0,0,0},{0,0,0}};
+int current = 0;
+float left_translation = 0;
+float right_translation = 0;
+float left_rotation = 0;
+float right_rotation = 0;
+float x_tracker = 0;
+float y_tracker = 0;
+float theata_tracker = 0;
+
 //ODOMETRY VARIABLES
 //encoder trackers
 volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
@@ -27,7 +38,7 @@ volatile int encoderRightPosition = 0;
 float  DIAMETER  = 58;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, Dc, Orientation_change;
 
-float ENCODER_RESOLUTION = 36;      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION = 64;      //encoder resolution (in pulses per revolution)
 
 int x = 0;           // x initial coordinate of mobile robot 
 int y = 0;           // y initial coordinate of mobile robot 
@@ -80,8 +91,8 @@ void setup() {
     while (Serial.available() && Serial.read()); // empty buffer
 
     //Pin stuff
-    pinMode(PWM_L, OUTPUT);//
-    pinMode(PWM_R, OUTPUT);//
+    pinMode(PWM_L, OUTPUT);
+    pinMode(PWM_R, OUTPUT);
 
     Serial.println("Setting up IR Pins");
     pinMode(encoderPinAI, INPUT); 
@@ -132,21 +143,23 @@ void loop() {
         
       //update our odometry values every loop
       update_Odometry();
+      //method to move the robot
+      move_Bot();
       //calculate pwm
-      pwm_out();
+      pwm_Out();
 
 }
 
-void pwm_out(){
+void pwm_Out(){
   
      pwm += -K*(0.10 - angle)+B*(angular_rate);
      
     //set max and min to 400 and -400 change value for next project to leave power for turning
-        if(pwm<-400){
-          pwm=-400;
+        if(pwm<-300){
+          pwm=-300;
         }
-        else if(pwm>400){
-          pwm=400;
+        else if(pwm>300){
+          pwm=300;
         }
        Serial.print("   PWM SIgnal: ");
        Serial.print(pwm);
@@ -162,8 +175,8 @@ void pwm_out(){
 
 void set_Motors(int l_val, int r_val){
   
-      md.setM1Speed(l_val);
-      md.setM2Speed(r_val);
+      md.setM1Speed(l_val + left_translation + left_rotation);
+      md.setM2Speed(r_val + right_translation + right_rotation);
 }
 
 //interupt method for first wheel
@@ -252,6 +265,37 @@ void update_Odometry(){
     Orientation += PI;
     
 }
+//method to move our robot
+void move_Bot(){
+    //put values into translation and rotation values
+    //we have a 100pwm allowance need to cap that
+    //translation capped at 60 rotation at 40
+    //beginning of segment
+    x_encoder=x;
+    y_encoder=y;
+    theta_encoder=theta;
+
+    left_translation=(x_encoder+y_encoder)/2
+    if(left_translation>60){
+      left_translation=60;
+    }
+    if else(left_translation<-60){
+      left_translation=-60;
+    }  
+    right_translation=left_translation;
+
+
+    if((x+y)/2-paths[current][1]==(x_encoder+y_encoder)/2){
+      current++;
+      x_encoder=x;
+      y_encoder=y;
+      theta_encoder=theta;
+    }
+
+    
+    
+}
+
 
 
 
