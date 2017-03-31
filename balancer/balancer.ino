@@ -137,17 +137,17 @@ void loop() {
           angular_rate=0;
         }
         
-        Serial.print("Gyro: ");
-        Serial.print(angular_rate);
-        Serial.print("   Angle: ");
-        Serial.print(ypr[1]);
+//        Serial.print("Gyro: ");
+//        Serial.print(angular_rate);
+//        Serial.print("   Angle: ");
+//        Serial.print(ypr[1]);
         
       //update our odometry values every loop
       update_Odometry();
       //method to move the robot
-      move_Bot();
+      //move_Bot();
       //calculate pwm
-      pwm_Out();
+      //pwm_Out();
 
 }
 
@@ -162,13 +162,13 @@ void pwm_Out(){
         else if(pwm>300){
           pwm=300;
         }
-       Serial.print("   PWM SIgnal: ");
-       Serial.print(pwm);
-       Serial.print("   K: ");
-       Serial.print(K);
-       Serial.print("   B: ");
-       Serial.print(B);
-       Serial.println();
+//       Serial.print("   PWM SIgnal: ");
+//       Serial.print(pwm);
+//       Serial.print("   K: ");
+//       Serial.print(K);
+//       Serial.print("   B: ");
+//       Serial.print(B);
+//       Serial.println();
        pwm_l = pwm;
        pwm_r = pwm;
        set_Motors(pwm_l, pwm_r);
@@ -264,6 +264,15 @@ void update_Odometry(){
     Orientation -= PI;
   else if(Orientation < PI)
     Orientation += PI;
+  
+  Serial.print("X:");
+  Serial.print(x);
+  Serial.print("  ");
+  Serial.print("Y:");
+  Serial.print(y);
+  Serial.print("  ");
+  Serial.print("Theta:");
+  Serial.print(theta);
     
 }
 //method to move our robot
@@ -292,6 +301,7 @@ void move_Bot(){
       y_encoder=y;
       theta_encoder=theta;
     }
+    //MOVE THE ROBOT USING ANGLE OFSSET NOT PWM
 
     
     
