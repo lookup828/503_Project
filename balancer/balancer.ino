@@ -48,11 +48,11 @@ float CIRCUMSTANCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=50;
-float B=50;
+float K=20;
+float B=5;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset;
+float angle, angular_rate, angle_offset = .34;
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -82,6 +82,7 @@ void setup() {
     // initialize device
     Serial.println(F("Initializing MPU devices..."));
     mpu.initialize();
+    mpu.getFullScaleGyroRange(MPU6050_GYRO_FS_2000);
     mpu.setXGyroOffset(129);
     mpu.setYGyroOffset(-26); 
     mpu.setZGyroOffset(10);
@@ -130,8 +131,8 @@ void loop() {
 //        #endif
         mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
         
-        angle = ypr[1] + (.084); 
-        angular_rate = -((double)gyro[1]/131.0); // converted to radian
+        angle = atan2(ypr[1], ypr[2]) + (.084); 
+        angular_rate = -(((float)gyro[1]/16.0)*(3.14/180.0));  //angular_rate = -((double)gyro[1]/131.0); // converted to radian
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
         }
@@ -152,7 +153,7 @@ void loop() {
 
 void pwm_Out(){
   
-     pwm += -K*(0.10 - angle)+B*(angular_rate);
+     pwm += -K*(angle_offset - angle)+B*(angular_rate);
      
     //set max and min to 400 and -400 change value for next project to leave power for turning
         if(pwm<-300){
@@ -181,7 +182,7 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-   Serial.println("I Happened First Bitch");
+   Serial.println("I Happened First");
   if (digitalRead(encoderPinAI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinA) == LOW) 
