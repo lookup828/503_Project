@@ -20,12 +20,14 @@ DualMC33926MotorShield md;
 #define encoderPinB  6
 
 //MOVEMENT VARIABLES
-int paths[4][3] = {{0,0,0},{0,0,0},{0,0,0},{0,0,0}};
+//distance in mm
+int paths[4][3] = {{0,10000,0},{0,0,0},{0,0,0},{0,0,0}};
 int current = 0;
-float left_translation = 0;
-float right_translation = 0;
-float left_rotation = 0;
-float right_rotation = 0;
+double left_output = 0;
+double right_output = 0;
+float angle_increase = 0;
+double scalar;
+float needed_distance = 0;
 float x_tracker = 0;
 float y_tracker = 0;
 float theata_tracker = 0;
@@ -153,7 +155,7 @@ void loop() {
 
 void pwm_Out(){
   
-     pwm += -K*(angle_offset - angle)+B*(angular_rate);
+     pwm += -K*( (angle_offset + angle_increase) - angle)+B*(angular_rate);
      
     //set max and min to 400 and -400 change value for next project to leave power for turning
         if(pwm<-300){
@@ -169,8 +171,8 @@ void pwm_Out(){
 //       Serial.print("   B: ");
 //       Serial.print(B);
 //       Serial.println();
-       pwm_l = pwm;
-       pwm_r = pwm;
+       pwm_l = pwm + right_output;
+       pwm_r = pwm + left_output;
        set_Motors(pwm_l, pwm_r);
 }
 
@@ -272,40 +274,52 @@ void update_Odometry(){
   Serial.print(y);
   Serial.print("  ");
   Serial.print("Theta:");
-  Serial.print(theta);
+  Serial.println(theta);
     
 }
 //method to move our robot
 void move_Bot(){
     //put values into translation and rotation values
     //we have a 100pwm allowance need to cap that
-    //translation capped at 60 rotation at 40
     //beginning of segment
-    x_encoder=x;
-    y_encoder=y;
-    theta_encoder=theta;
-
-    left_translation=(x_encoder+y_encoder)/2
-    if(left_translation>60){
-      left_translation=60;
+    if(needed_distance == -1){
+      x_tracker = x;
+      y_tracker = y;
+      theta_tracker = theta;
+      scalar = -60 - sqrt(paths[current][1]);   //calcuate the scalar for x in the motor output equation
+      needed_distance = avg_dist + paths[current][1]//assuming the type is 0; will implement for type 1 later
     }
-    if else(left_translation<-60){
-      left_translation=-60;
-    }  
-    right_translation=left_translation;
 
-
-    if((x+y)/2-paths[current][1]==(x_encoder+y_encoder)/2){
+    // y = scalar(-x^2) + 60;
+    right_output = ( scalar * pow(-distanceRightWheel, 2) )+ 100;
+    left_output  = ( scalar * pow(-distanceLeftWheel,  2) )+ 100;
+    
+    //values automatically capped between 0 and 100 pwm which is our limit
+    // will need to calculate the individual wheel distance travel for turning
+    if(right_output >= left_output){
+      angle_increase = left_output;
+      right_output = right_output - left_output;
+    }else{
+      angle_increase = right_output;
+      left_output = left_output - right_output;
+    }
+    error_correction();
+    
+    //check if we have finished the segment
+    //if so we move the current path up one and set the begining of path flag
+    if( avg_dist >= needed_dist ){
       current++;
-      x_encoder=x;
-      y_encoder=y;
-      theta_encoder=theta;
+      needed_dist = -1;
+      delay(20000);
     }
     //MOVE THE ROBOT USING ANGLE OFSSET NOT PWM
-
-    
     
 }
+//this will be our method for tweaking values so the robot
+//will handle errors in movement
+//for type 0: if we are farther than we should be lower pwm, if we are not as far as we should be up the pwm
+//for type 1: if the angle is higher or lower than it should be change the output for that specific wheel
+void error_correction(){}
 
 
 
