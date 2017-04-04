@@ -1,4 +1,4 @@
-#include <QTRSensors.h>
+#include "QTRSensors.h"
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #if I2CDEV_IMPLEMENTATION == I2CDEV_ARDUINO_WIRE
@@ -37,16 +37,16 @@ float theta_tracker = 0;
 volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
-float  DIAMETER  = 58;         // wheel diameter (in mm)
-float distanceLeftWheel, distanceRightWheel, Dc, Orientation_change;
+float  DIAMETER  = 70;         // wheel diameter (in mm)
+float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change;
 
-float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION = 120;      //encoder resolution (in pulses per revolution)
 
 int x = 0;           // x initial coordinate of mobile robot 
 int y = 0;           // y initial coordinate of mobile robot 
-float Orientation  = 0;       // The initial orientation of mobile robot 
-float WHEELBASE = 5;       //  the wheelbase of the mobile robot in mm
-float CIRCUMSTANCE =PI * DIAMETER;
+float theta_world  = 0;       // The initial theta_world of mobile robot 
+float baseToWheel = 88.9;       //  the wheelbase of the mobile robot in mm
+float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
@@ -82,13 +82,13 @@ void setup() {
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // initialize device
-//    Serial.println(F("Initializing MPU devices..."));
-//    mpu.initialize();
-//    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-//    mpu.setXGyroOffset(129);
-//    mpu.setYGyroOffset(-26); 
-//    mpu.setZGyroOffset(10);
-//    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
+    Serial.println(F("Initializing MPU devices..."));
+    mpu.initialize();
+    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+    mpu.setXGyroOffset(129);
+    mpu.setYGyroOffset(-26); 
+    mpu.setZGyroOffset(10);
+    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
@@ -131,8 +131,9 @@ void loop() {
 //            mpu.dmpGetGyro(gyro, fifoBuffer);
 //            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
 //        #endif
+        //IF YOU INPLUG THE IMU TO TEST OTHER PARTS YOU NEED TO UNCOMMENT THE NEXT LINE TO RUN PAST IT
         mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
-        
+        //Serial.println("After get motion");
         angle = atan2(ypr[1], ypr[2]) + (.084); 
         angular_rate = -(((float)gyro[1]/16.0)*(3.14/180.0));  //angular_rate = -((double)gyro[1]/131.0); // converted to radian
         if(angular_rate<0.01 and angular_rate>-0.01){
@@ -145,6 +146,7 @@ void loop() {
 //        Serial.print(ypr[1]);
         
       //update our odometry values every loop
+      //Serial.println("Before OD");
       update_Odometry();
       //method to move the robot
       //move_Bot();
@@ -184,17 +186,17 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-   Serial.println("I Happened First");
+   //Serial.println("I Happened First");
   if (digitalRead(encoderPinAI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinA) == LOW) 
     {  // check channel B to see which way
-      Serial.println("Counterclockwise and backward");
+      //Serial.println("Counterclockwise and backward");
       encoderLeftPosition = encoderLeftPosition - 1;
     } 
     else 
     {
-      Serial.println("Clockwise and forward");
+      //Serial.println("Clockwise and forward");
       encoderLeftPosition = encoderLeftPosition + 1;         
     }
   }
@@ -203,32 +205,32 @@ void encoderA(){
     if (digitalRead(encoderPinA) == LOW) 
     {   // check channel B to see which way
                                               // encoder is turning  
-      Serial.println("Clockwise and forward");
+      //Serial.println("Clockwise and forward");
       encoderLeftPosition = encoderLeftPosition + 1;          
     } 
     else 
     {
-      Serial.println("Counterclockwise and backward");
+      //Serial.println("Counterclockwise and backward");
       encoderLeftPosition = encoderLeftPosition - 1;         
     }
 
   }
-  Serial.println (encoderLeftPosition, DEC);   
+  //Serial.println (encoderLeftPosition, DEC);   
 }
 
 //interupt method for other wheel
 void encoderB(){
-  Serial.println("I Happen");
+  //Serial.println("I Happen");
   if (digitalRead(encoderPinBI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinB) == LOW) 
     {  // check channel B to see which way
-      Serial.println("Counterclockwise and backward");      // encoder is turning
+      //Serial.println("Counterclockwise and backward");      // encoder is turning
       encoderRightPosition = encoderRightPosition - 1;         
     } 
     else 
     {
-      Serial.println("Clockwise and forward");
+      //Serial.println("Clockwise and forward");
       encoderRightPosition = encoderRightPosition + 1;         // CW
     }
   }
@@ -237,35 +239,36 @@ void encoderB(){
     if (digitalRead(encoderPinB) == LOW) 
     {   // check channel B to see which way
                                               // encoder is turning  
-      Serial.println("Clockwise and forward");
+      //Serial.println("Clockwise and forward");
       encoderRightPosition = encoderRightPosition + 1;          
     } 
     else 
     {
-      Serial.println("Counterclockwise and backward");
+      //Serial.println("Counterclockwise and backward");
       encoderRightPosition = encoderRightPosition - 1;         
     }
 
   }
-  Serial.println (encoderRightPosition, DEC);   
+  ///Serial.println (encoderRightPosition, DEC);   
 }
 
 //Calculate Odometry Values
 void update_Odometry(){
-  
-  distanceLeftWheel = CIRCUMSTANCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
-  distanceRightWheel = CIRCUMSTANCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
-  avg_dist = (distanceLeftWheel + distanceRightWheel) /2 ;                                 // incremental linear displacement of the robot's centerpoint C
-  theta = atan2(distanceRightWheel, distanceLeftWheel);              // the robot's incremental change of orientation , where b is the wheelbase of the mobile robot ,
-  Orientation = Orientation + theta;                                     //  The robot's new relative orientation 
-  x = x + avg_dist * cos(Orientation);                                              // the relative position of the centerpoint for mobile robot 
-  y = y + avg_dist * sin(Orientation);
+  //Serial.println("ODOMETRY");
+  distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
+  distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
+  distanceTotal = (distanceLeftWheel+distanceRightWheel)/2
+  delta_theta_world=atan2((distanceRightWheel-distanceTotal)/baseToWheel);
+  theta_world=theta_world+delta_theta_world;
+  x=x+distanceTotal*cos(delta_theta_world);
+  y=y+distanceTotal*sin(delta_theta_world); 
+
   
   //if statments to make sure theta is within 2 Pi
-  if(Orientation > PI)
-    Orientation -= PI;
-  else if(Orientation < PI)
-    Orientation += PI;
+  if(theta_world > PI)
+    theta_world -= PI;
+  else if(theta_world < PI)
+    theta_world += PI;
   
   Serial.print("X:");
   Serial.print(x);
