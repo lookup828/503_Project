@@ -30,7 +30,7 @@ double scalar;
 float needed_distance = 0;
 float x_tracker = 0;
 float y_tracker = 0;
-float theata_tracker = 0;
+float theta_tracker = 0;
 
 //ODOMETRY VARIABLES
 //encoder trackers
@@ -40,7 +40,7 @@ volatile int encoderRightPosition = 0;
 float  DIAMETER  = 58;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, Dc, Orientation_change;
 
-float ENCODER_RESOLUTION = 64;      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
 
 int x = 0;           // x initial coordinate of mobile robot 
 int y = 0;           // y initial coordinate of mobile robot 
@@ -84,7 +84,7 @@ void setup() {
     // initialize device
     Serial.println(F("Initializing MPU devices..."));
     mpu.initialize();
-    mpu.getFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
     mpu.setXGyroOffset(129);
     mpu.setYGyroOffset(-26); 
     mpu.setZGyroOffset(10);
@@ -178,8 +178,8 @@ void pwm_Out(){
 
 void set_Motors(int l_val, int r_val){
   
-      md.setM1Speed(l_val + left_translation + left_rotation);
-      md.setM2Speed(r_val + right_translation + right_rotation);
+      md.setM1Speed(l_val);
+      md.setM2Speed(r_val);
 }
 
 //interupt method for first wheel
@@ -286,13 +286,13 @@ void move_Bot(){
       x_tracker = x;
       y_tracker = y;
       theta_tracker = theta;
-      scalar = -60 - sqrt(paths[current][1]);   //calcuate the scalar for x in the motor output equation
-      needed_distance = avg_dist + paths[current][1]//assuming the type is 0; will implement for type 1 later
+      scalar = 100 / sqrt(paths[current][1]);   //calcuate the scalar for x in the motor output equation
+      needed_distance = avg_dist + paths[current][1];//assuming the type is 0; will implement for type 1 later
     }
 
-    // y = scalar(-x^2) + 60;
-    right_output = ( scalar * pow(-distanceRightWheel, 2) )+ 100;
-    left_output  = ( scalar * pow(-distanceLeftWheel,  2) )+ 100;
+    // y = scalar(-x^2) + 100;
+    right_output = ( scalar * pow(-distanceRightWheel, 2) ) + 100;
+    left_output  = ( scalar * pow(-distanceLeftWheel,  2) ) + 100;
     
     //values automatically capped between 0 and 100 pwm which is our limit
     // will need to calculate the individual wheel distance travel for turning
@@ -307,9 +307,9 @@ void move_Bot(){
     
     //check if we have finished the segment
     //if so we move the current path up one and set the begining of path flag
-    if( avg_dist >= needed_dist ){
+    if( avg_dist >= needed_distance ){
       current++;
-      needed_dist = -1;
+      needed_distance = -1;
       delay(20000);
     }
     //MOVE THE ROBOT USING ANGLE OFSSET NOT PWM
