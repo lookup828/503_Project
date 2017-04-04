@@ -82,13 +82,13 @@ void setup() {
     while (!Serial); // wait for Leonardo enumeration, others continue immediately
 
     // initialize device
-    Serial.println(F("Initializing MPU devices..."));
-    mpu.initialize();
-    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-    mpu.setXGyroOffset(129);
-    mpu.setYGyroOffset(-26); 
-    mpu.setZGyroOffset(10);
-    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
+//    Serial.println(F("Initializing MPU devices..."));
+//    mpu.initialize();
+//    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+//    mpu.setXGyroOffset(129);
+//    mpu.setYGyroOffset(-26); 
+//    mpu.setZGyroOffset(10);
+//    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
