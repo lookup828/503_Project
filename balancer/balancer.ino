@@ -40,10 +40,9 @@ volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
 float  DIAMETER  = 70;         // wheel diameter (in mm)
-float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change, deltaDistance, delta_theta_world;
-float r_prev, l_prev;
+float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change, distanceTotal, delta_theta_world;
 
-float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION = 120;      //encoder resolution (in pulses per revolution)
 
 int x = 0;           // x initial coordinate of mobile robot 
 int y = 0;           // y initial coordinate of mobile robot 
@@ -150,7 +149,7 @@ void loop() {
         
       //update our odometry values every loop
       //Serial.println("Before OD");
-     // update_Odometry();
+      update_Odometry();
       //method to move the robot
       //move_Bot();
       //calculate pwm
@@ -189,7 +188,6 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-    Serial.println(digitalRead(encoderPinAI) == lastSignal);
     if(digitalRead(encoderPinAI) == lastSignal){
       return;
     }
@@ -263,13 +261,11 @@ void update_Odometry(){
   //Serial.println("ODOMETRY");
   distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
   distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
-  float deltaRight = distanceRightWheel - r_prev;
-  float deltaLeft = distanceLeftWheel - l_prev;
-  deltaDistance = ( deltaLeft + deltaRight) / 2;
-  delta_theta_world = atan2((deltaRight-deltaDistance),baseToWheel);
+  distanceTotal = (distanceLeftWheel+distanceRightWheel)/2;
+  delta_theta_world = atan2((distanceRightWheel-distanceTotal)/baseToWheel,1);
   theta_world = theta_world + delta_theta_world;
-  x = x + deltaDistance * cos(delta_theta_world);
-  y = y + deltaDistance * sin(delta_theta_world); 
+  x = x + distanceTotal * cos(delta_theta_world);
+  y = y + distanceTotal * sin(delta_theta_world); 
 
   
   //if statments to make sure theta is within 2 Pi
@@ -277,22 +273,16 @@ void update_Odometry(){
     theta_world -= PI;
   else if(theta_world < PI)
     theta_world += PI;
-
-
-    Serial.print(encoderLeftPosition);
-    Serial.print("    ");
-    Serial.println(encoderRightPosition);
-//  Serial.print("X:");
-//  Serial.print(x);
-//  Serial.print("  ");
-//  Serial.print("Y:");
-//  Serial.print(y);
-//  Serial.print("  ");
-//  Serial.print("Theta:");
-//  Serial.println(theta_world);
-
-  r_prev = distanceRightWheel;
-  l_prev = distanceLeftWheel;
+  
+  Serial.print("X:");
+  Serial.print(x);
+  Serial.print("  ");
+  Serial.print("Y:");
+  Serial.print(y);
+  Serial.print("  ");
+  Serial.print("Theta:");
+  Serial.println(theta);
+    
 }
 //method to move our robot
 void move_Bot(){
