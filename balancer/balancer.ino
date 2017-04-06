@@ -40,14 +40,14 @@ volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
 float  DIAMETER  = 70;         // wheel diameter (in mm)
-float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change, distanceTotal, delta_theta_world;
+float distanceLeftWheel=0, distanceRightWheel=0, Dc=0, theta_world_change=0, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
 
-float ENCODER_RESOLUTION = 120;      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
 
 int x = 0;           // x initial coordinate of mobile robot 
 int y = 0;           // y initial coordinate of mobile robot 
 float theta_world  = 0;       // The initial theta_world of mobile robot 
-float baseToWheel = 88.9;       //  the wheelbase of the mobile robot in mm
+float baseToWheel = 110;       //  the wheelbase of the mobile robot in mm
 float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
@@ -188,7 +188,9 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
+    //Serial.println("hello!");
     if(digitalRead(encoderPinAI) == lastSignal){
+      //Serial.println("hlelo");
       return;
     }
   if (digitalRead(encoderPinAI) == HIGH) 
@@ -220,11 +222,13 @@ void encoderA(){
 
   }
   //Serial.println (encoderLeftPosition, DEC);
-    lastSignal = digitalRead(encoderPinAI);    
+    lastSignal = digitalRead(encoderPinAI);  
+    //Serial.println(encoderLeftPosition);  
 }
 
 //interupt method for other wheel
 void encoderB(){
+  //Serial.println("hello");
   if (digitalRead(encoderPinBI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinB) == LOW) 
@@ -253,36 +257,53 @@ void encoderB(){
     }
 
   }
-  ///Serial.println (encoderRightPosition, DEC);  
+  //Serial.println (encoderRightPosition);  
 }
 
 //Calculate Odometry Values
 void update_Odometry(){
+
   //Serial.println("ODOMETRY");
   distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
-  distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
-  distanceTotal = (distanceLeftWheel+distanceRightWheel)/2;
-  delta_theta_world = atan2((distanceRightWheel-distanceTotal)/baseToWheel,1);
+  distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution )
+  float  deltaRight=distanceRightWheel-r_prev; 
+  float  deltaLeft=distanceLeftWheel-l_prev;
+  float  deltaDistance = (deltaRight+deltaLeft)/2;
+  delta_theta_world = atan2((deltaRight-deltaDistance),baseToWheel);
   theta_world = theta_world + delta_theta_world;
-  x = x + distanceTotal * cos(delta_theta_world);
-  y = y + distanceTotal * sin(delta_theta_world); 
+  x = x + deltaDistance * cos(delta_theta_world);
+  y = y + deltaDistance * sin(delta_theta_world); 
 
   
   //if statments to make sure theta is within 2 Pi
-  if(theta_world > PI)
+  if(theta_world > 2*PI){
     theta_world -= PI;
-  else if(theta_world < PI)
+  }
+  else if(theta_world < 0){
     theta_world += PI;
-  
-  Serial.print("X:");
-  Serial.print(x);
-  Serial.print("  ");
-  Serial.print("Y:");
-  Serial.print(y);
-  Serial.print("  ");
-  Serial.print("Theta:");
-  Serial.println(theta);
-    
+  }
+
+  if(distanceLeftWheel==l_prev){
+    return;
+  }
+  else{
+    Serial.println(distanceLeftWheel);
+    Serial.println(x);
+    Serial.println(y);
+  }
+    //Serial.println(encoderRightPosition);
+    //Serial.println(encoderLeftPosition);
+  //Serial.println(deltaDistance);
+//  Serial.print("X:");
+//  Serial.print(x);
+//  Serial.print("  ");
+//  Serial.print("Y:");
+//  Serial.print(y);
+//  Serial.print("  ");
+//  Serial.print("Theta:");
+//  Serial.println(theta_world);
+  r_prev=distanceRightWheel;
+  l_prev=distanceLeftWheel;
 }
 //method to move our robot
 void move_Bot(){
