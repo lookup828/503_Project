@@ -19,6 +19,8 @@ DualMC33926MotorShield md;
 #define encoderPinA  5
 #define encoderPinB  6
 
+//error for pin
+int lastSignal = -1;
 //MOVEMENT VARIABLES
 //distance in mm
 int paths[4][3] = {{0,10000,0},{0,0,0},{0,0,0},{0,0,0}};
@@ -38,7 +40,7 @@ volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
 float  DIAMETER  = 70;         // wheel diameter (in mm)
-float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change;
+float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change, distanceTotal, delta_theta_world;
 
 float ENCODER_RESOLUTION = 120;      //encoder resolution (in pulses per revolution)
 
@@ -83,12 +85,12 @@ void setup() {
 
     // initialize device
     Serial.println(F("Initializing MPU devices..."));
-    mpu.initialize();
-    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-    mpu.setXGyroOffset(129);
-    mpu.setYGyroOffset(-26); 
-    mpu.setZGyroOffset(10);
-    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
+//    mpu.initialize();
+//    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+//    mpu.setXGyroOffset(129);
+//    mpu.setYGyroOffset(-26); 
+//    mpu.setZGyroOffset(10);
+//    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
@@ -108,7 +110,7 @@ void setup() {
     digitalWrite(encoderPinB, HIGH);       // turn on pull-up resistor
 
     attachInterrupt(0, encoderA, CHANGE);//Bind interupt pin2
-    attachInterrupt(1, encoderB, CHANGE);//Bind interupt pin3
+    attachInterrupt(1, encoderB, HIGH);//Bind interupt pin3
 
     //delay 10 seconds
     //delay(10000);
@@ -186,7 +188,9 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-   //Serial.println("I Happened First");
+    if(digitalRead(encoderPinAI) == lastSignal){
+      return;
+    }
   if (digitalRead(encoderPinAI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinA) == LOW) 
@@ -215,12 +219,12 @@ void encoderA(){
     }
 
   }
-  //Serial.println (encoderLeftPosition, DEC);   
+  //Serial.println (encoderLeftPosition, DEC);
+    lastSignal = digitalRead(encoderPinAI);    
 }
 
 //interupt method for other wheel
 void encoderB(){
-  //Serial.println("I Happen");
   if (digitalRead(encoderPinBI) == HIGH) 
   {   // found a low-to-high on channel A
     if (digitalRead(encoderPinB) == LOW) 
@@ -249,7 +253,7 @@ void encoderB(){
     }
 
   }
-  ///Serial.println (encoderRightPosition, DEC);   
+  ///Serial.println (encoderRightPosition, DEC);  
 }
 
 //Calculate Odometry Values
@@ -257,11 +261,11 @@ void update_Odometry(){
   //Serial.println("ODOMETRY");
   distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
   distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution ) 
-  distanceTotal = (distanceLeftWheel+distanceRightWheel)/2
-  delta_theta_world=atan2((distanceRightWheel-distanceTotal)/baseToWheel);
-  theta_world=theta_world+delta_theta_world;
-  x=x+distanceTotal*cos(delta_theta_world);
-  y=y+distanceTotal*sin(delta_theta_world); 
+  distanceTotal = (distanceLeftWheel+distanceRightWheel)/2;
+  delta_theta_world = atan2((distanceRightWheel-distanceTotal)/baseToWheel,1);
+  theta_world = theta_world + delta_theta_world;
+  x = x + distanceTotal * cos(delta_theta_world);
+  y = y + distanceTotal * sin(delta_theta_world); 
 
   
   //if statments to make sure theta is within 2 Pi
@@ -323,8 +327,4 @@ void move_Bot(){
 //for type 0: if we are farther than we should be lower pwm, if we are not as far as we should be up the pwm
 //for type 1: if the angle is higher or lower than it should be change the output for that specific wheel
 void error_correction(){}
-
-
-
-
 
