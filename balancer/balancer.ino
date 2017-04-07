@@ -40,7 +40,7 @@ volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
 float  DIAMETER  = 70;         // wheel diameter (in mm)
-float distanceLeftWheel=0, distanceRightWheel=0, Dc=0, theta_world_change=0, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
+float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
 
 float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
 
@@ -276,10 +276,10 @@ void update_Odometry(){
 
   
   //if statments to make sure theta is within 2 Pi
-  if(theta_world > 2*PI){
+  if(theta_world > PI){
     theta_world -= PI;
   }
-  else if(theta_world < 0){
+  else if(theta_world < -PI){
     theta_world += PI;
   }
 
