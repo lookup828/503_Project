@@ -20,7 +20,8 @@ DualMC33926MotorShield md;
 #define encoderPinB  6
 
 //error for pin
-int lastSignal = -1;
+int lastSignal_L = -1;
+int lastSignal_R = -1;
 //MOVEMENT VARIABLES
 //distance in mm
 int paths[4][3] = {{0,10000,0},{0,0,0},{0,0,0},{0,0,0}};
@@ -40,7 +41,7 @@ volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
 float  DIAMETER  = 70.2;         // wheel diameter (in mm)
-float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
+float distanceLeftWheel, distanceRightWheel, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
 
 float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
 
@@ -59,6 +60,9 @@ int i =0;
 float angle, angular_rate, angle_offset = .34;
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
+
+//odometry cap
+int o_cap =0;
 
 
 
@@ -134,12 +138,12 @@ void loop() {
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
         }
-        
-        
+          update_Odometry();
       //method to move the robot
       //move_Bot();
       //calculate pwm
       //pwm_Out();
+      o_cap++;
 
 }
 
@@ -168,44 +172,49 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-    if(digitalRead(encoderPinAI) == lastSignal){
+    if(digitalRead(encoderPinAI) == lastSignal_R){
       return;
     }
   if (digitalRead(encoderPinAI) == HIGH) 
   {   
     if (digitalRead(encoderPinA) == LOW) 
     {  
-      encoderLeftPosition = encoderLeftPosition - 1;
+      encoderLeftPosition = encoderLeftPosition + 1;
     } 
     else 
     {
-      encoderLeftPosition = encoderLeftPosition + 1;         
+      encoderLeftPosition = encoderLeftPosition - 1;         
     }
   }
   else                                        
   { 
     if (digitalRead(encoderPinA) == LOW) 
     {   
-      encoderLeftPosition = encoderLeftPosition + 1;          
+      encoderLeftPosition = encoderLeftPosition - 1;          
     } 
     else 
     {
-      encoderLeftPosition = encoderLeftPosition - 1;         
+      encoderLeftPosition = encoderLeftPosition + 1;         
     }
 
   }
 
-    lastSignal = digitalRead(encoderPinAI);  
-    update_Odometry();
+    lastSignal_R = digitalRead(encoderPinAI);  
+    //update_Odometry();
     Serial.print(x);
     Serial.print("   ");
     Serial.print(y);
     Serial.print("   ");
-    Serial.print(theta_world);
+    Serial.println(theta_world);
+ //   Serial.println(encoderLeftPosition);
 }
 
 //interupt method for other wheel
 void encoderB(){
+  
+  if(digitalRead(encoderPinBI) == lastSignal_L){
+      return;
+    }
   if (digitalRead(encoderPinBI) == HIGH) 
   {   
     if (digitalRead(encoderPinB) == LOW) 
@@ -230,13 +239,14 @@ void encoderB(){
     }
 
   }
-  
-  update_Odometry();
+  lastSignal_L = digitalRead(encoderPinBI); 
+  //update_Odometry();
   Serial.print(x);
   Serial.print("   ");
   Serial.print(y);
   Serial.print("   ");
-  Serial.print(theta_world);
+  Serial.println(theta_world);
+//   Serial.println(encoderRightPosition);
 }
 
 //Calculate Odometry Values
@@ -244,25 +254,25 @@ void update_Odometry(){
 
   distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
   distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution )
-  float  deltaRight=distanceRightWheel-r_prev; 
-  float  deltaLeft=distanceLeftWheel-l_prev;
-  float  deltaDistance = (deltaRight+deltaLeft) / 2;
-  delta_theta_world = atan2((deltaRight-deltaDistance),baseToWheel);
+  float  deltaRight = distanceRightWheel - r_prev; 
+  float  deltaLeft = distanceLeftWheel - l_prev;
+  float  deltaDistance = (deltaRight + deltaLeft) / 2;
+  delta_theta_world = atan2((deltaRight - deltaDistance), baseToWheel);
   theta_world = theta_world + delta_theta_world;
-  x = x + deltaDistance * cos(delta_theta_world);
-  y = y + deltaDistance * sin(delta_theta_world); 
+  x = x + deltaDistance * cos(theta_world);
+  y = y + deltaDistance * sin(theta_world); 
 
   
   //if statments to make sure theta is within 2 Pi
-  if(theta_world > PI){
-    theta_world -= PI;
+  if(theta_world > 2*PI){
+    theta_world -= 2*PI;
   }
-  else if(theta_world < -PI){
-    theta_world += PI;
+  else if(theta_world < 0){
+    theta_world += 2*PI;
   }
 
-  r_prev=distanceRightWheel;
-  l_prev=distanceLeftWheel;
+  r_prev = distanceRightWheel;
+  l_prev = distanceLeftWheel;
 }
 //method to move our robot
 void move_Bot(){
