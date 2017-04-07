@@ -138,7 +138,9 @@ void loop() {
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
         }
-          update_Odometry();
+//        if( (o_cap % 100) == 0 ){
+//          update_Odometry();
+//        }
       //method to move the robot
       //move_Bot();
       //calculate pwm
@@ -172,7 +174,7 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-    if(digitalRead(encoderPinAI) == lastSignal_R){
+    if(digitalRead(encoderPinA) == lastSignal_R){
       return;
     }
   if (digitalRead(encoderPinAI) == HIGH) 
@@ -199,7 +201,7 @@ void encoderA(){
 
   }
 
-    lastSignal_R = digitalRead(encoderPinAI);  
+    lastSignal_R = digitalRead(encoderPinA);  
     //update_Odometry();
     Serial.print(x);
     Serial.print("   ");
@@ -212,7 +214,7 @@ void encoderA(){
 //interupt method for other wheel
 void encoderB(){
   
-  if(digitalRead(encoderPinBI) == lastSignal_L){
+  if(digitalRead(encoderPinB) == lastSignal_L){
       return;
     }
   if (digitalRead(encoderPinBI) == HIGH) 
@@ -239,8 +241,8 @@ void encoderB(){
     }
 
   }
-  lastSignal_L = digitalRead(encoderPinBI); 
-  //update_Odometry();
+  lastSignal_L = digitalRead(encoderPinB); 
+  update_Odometry();
   Serial.print(x);
   Serial.print("   ");
   Serial.print(y);
@@ -257,6 +259,7 @@ void update_Odometry(){
   float  deltaRight = distanceRightWheel - r_prev; 
   float  deltaLeft = distanceLeftWheel - l_prev;
   float  deltaDistance = (deltaRight + deltaLeft) / 2;
+  //Serial.println(deltaRight);
   delta_theta_world = atan2((deltaRight - deltaDistance), baseToWheel);
   theta_world = theta_world + delta_theta_world;
   x = x + deltaDistance * cos(theta_world);
@@ -264,11 +267,11 @@ void update_Odometry(){
 
   
   //if statments to make sure theta is within 2 Pi
-  if(theta_world > 2*PI){
-    theta_world -= 2*PI;
+  if(theta_world > PI){
+    theta_world -= PI;
   }
-  else if(theta_world < 0){
-    theta_world += 2*PI;
+  else if(theta_world < -PI){
+    theta_world += PI;
   }
 
   r_prev = distanceRightWheel;
