@@ -39,13 +39,13 @@ float theta_tracker = 0;
 volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
 
-float  DIAMETER  = 70;         // wheel diameter (in mm)
+float  DIAMETER  = 70.2;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, Dc, theta_world_change, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
 
 float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
 
-int x = 0;           // x initial coordinate of mobile robot 
-int y = 0;           // y initial coordinate of mobile robot 
+float x = 0;           // x initial coordinate of mobile robot 
+float y = 0;           // y initial coordinate of mobile robot 
 float theta_world  = 0;       // The initial theta_world of mobile robot 
 float baseToWheel = 110;       //  the wheelbase of the mobile robot in mm
 float CIRCUMFERENCE =PI * DIAMETER;
@@ -126,30 +126,16 @@ void setup() {
 
 void loop() {
     
-//        #ifdef OUTPUT_READABLE_YAWPITCHROLL
-//            // display Euler angles in degrees
-//            mpu.dmpGetQuaternion(&q, fifoBuffer);
-//            mpu.dmpGetGravity(&gravity, &q);
-//            mpu.dmpGetGyro(gyro, fifoBuffer);
-//            mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-//        #endif
         //IF YOU INPLUG THE IMU TO TEST OTHER PARTS YOU NEED TO UNCOMMENT THE NEXT LINE TO RUN PAST IT
         mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
-        //Serial.println("After get motion");
+ 
         angle = atan2(ypr[1], ypr[2]) + (.084); 
         angular_rate = -(((float)gyro[1]/16.0)*(3.14/180.0));  //angular_rate = -((double)gyro[1]/131.0); // converted to radian
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
         }
         
-//        Serial.print("Gyro: ");
-//        Serial.print(angular_rate);
-//        Serial.print("   Angle: ");
-//        Serial.print(ypr[1]);
         
-      //update our odometry values every loop
-      //Serial.println("Before OD");
-      update_Odometry();
       //method to move the robot
       //move_Bot();
       //calculate pwm
@@ -168,13 +154,7 @@ void pwm_Out(){
         else if(pwm>300){
           pwm=300;
         }
-//       Serial.print("   PWM SIgnal: ");
-//       Serial.print(pwm);
-//       Serial.print("   K: ");
-//       Serial.print(K);
-//       Serial.print("   B: ");
-//       Serial.print(B);
-//       Serial.println();
+
        pwm_l = pwm + right_output;
        pwm_r = pwm + left_output;
        set_Motors(pwm_l, pwm_r);
@@ -188,67 +168,60 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-    //Serial.println("hello!");
     if(digitalRead(encoderPinAI) == lastSignal){
-      //Serial.println("hlelo");
       return;
     }
   if (digitalRead(encoderPinAI) == HIGH) 
-  {   // found a low-to-high on channel A
+  {   
     if (digitalRead(encoderPinA) == LOW) 
-    {  // check channel B to see which way
-      //Serial.println("Counterclockwise and backward");
+    {  
       encoderLeftPosition = encoderLeftPosition - 1;
     } 
     else 
     {
-      //Serial.println("Clockwise and forward");
       encoderLeftPosition = encoderLeftPosition + 1;         
     }
   }
-  else                                        // found a high-to-low on channel A
+  else                                        
   { 
     if (digitalRead(encoderPinA) == LOW) 
-    {   // check channel B to see which way
-                                              // encoder is turning  
-      //Serial.println("Clockwise and forward");
+    {   
       encoderLeftPosition = encoderLeftPosition + 1;          
     } 
     else 
     {
-      //Serial.println("Counterclockwise and backward");
       encoderLeftPosition = encoderLeftPosition - 1;         
     }
 
   }
-  //Serial.println (encoderLeftPosition, DEC);
+
     lastSignal = digitalRead(encoderPinAI);  
-    //Serial.println(encoderLeftPosition);  
+    update_Odometry();
+    Serial.print(x);
+    Serial.print("   ");
+    Serial.print(y);
+    Serial.print("   ");
+    Serial.print(theta_world);
 }
 
 //interupt method for other wheel
 void encoderB(){
-  //Serial.println("hello");
   if (digitalRead(encoderPinBI) == HIGH) 
-  {   // found a low-to-high on channel A
+  {   
     if (digitalRead(encoderPinB) == LOW) 
-    {  // check channel B to see which way
-      //Serial.println("Counterclockwise and backward");      // encoder is turning
+    {  
       encoderRightPosition = encoderRightPosition - 1;         
     } 
     else 
     {
-      //Serial.println("Clockwise and forward");
-      encoderRightPosition = encoderRightPosition + 1;         // CW
+      encoderRightPosition = encoderRightPosition + 1;
     }
   }
-  else                                        // found a high-to-low on channel A
+  else                                       
   { 
     if (digitalRead(encoderPinB) == LOW) 
-    {   // check channel B to see which way
-                                              // encoder is turning  
-      //Serial.println("Clockwise and forward");
-      encoderRightPosition = encoderRightPosition + 1;          
+    {                                       
+        encoderRightPosition = encoderRightPosition + 1;          
     } 
     else 
     {
@@ -257,18 +230,23 @@ void encoderB(){
     }
 
   }
-  //Serial.println (encoderRightPosition);  
+  
+  update_Odometry();
+  Serial.print(x);
+  Serial.print("   ");
+  Serial.print(y);
+  Serial.print("   ");
+  Serial.print(theta_world);
 }
 
 //Calculate Odometry Values
 void update_Odometry(){
 
-  //Serial.println("ODOMETRY");
   distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
   distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution )
   float  deltaRight=distanceRightWheel-r_prev; 
   float  deltaLeft=distanceLeftWheel-l_prev;
-  float  deltaDistance = (deltaRight+deltaLeft)/2;
+  float  deltaDistance = (deltaRight+deltaLeft) / 2;
   delta_theta_world = atan2((deltaRight-deltaDistance),baseToWheel);
   theta_world = theta_world + delta_theta_world;
   x = x + deltaDistance * cos(delta_theta_world);
@@ -283,25 +261,6 @@ void update_Odometry(){
     theta_world += PI;
   }
 
-  if(distanceLeftWheel==l_prev){
-    return;
-  }
-  else{
-    Serial.println(distanceLeftWheel);
-    Serial.println(x);
-    Serial.println(y);
-  }
-    //Serial.println(encoderRightPosition);
-    //Serial.println(encoderLeftPosition);
-  //Serial.println(deltaDistance);
-//  Serial.print("X:");
-//  Serial.print(x);
-//  Serial.print("  ");
-//  Serial.print("Y:");
-//  Serial.print(y);
-//  Serial.print("  ");
-//  Serial.print("Theta:");
-//  Serial.println(theta_world);
   r_prev=distanceRightWheel;
   l_prev=distanceLeftWheel;
 }
