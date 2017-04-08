@@ -59,7 +59,7 @@ float K=20;
 float B=5;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .34;
+float angle, angular_rate, angle_offset = .19;
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -91,12 +91,12 @@ void setup() {
 
     // initialize device
     Serial.println(F("Initializing MPU devices..."));
-//    mpu.initialize();
-//    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
-//    mpu.setXGyroOffset(129);
-//    mpu.setYGyroOffset(-26); 
-//    mpu.setZGyroOffset(10);
-//    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
+    mpu.initialize();
+    mpu.setFullScaleGyroRange(MPU6050_GYRO_FS_2000);
+    mpu.setXGyroOffset(129);
+    mpu.setYGyroOffset(-26); 
+    mpu.setZGyroOffset(10);
+    mpu.setZAccelOffset(1327); // 1688 factory default for my test chip
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
@@ -135,11 +135,28 @@ void loop() {
         //IF YOU INPLUG THE IMU TO TEST OTHER PARTS YOU NEED TO UNCOMMENT THE NEXT LINE TO RUN PAST IT
         mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
  
-        angle = atan2(ypr[1], ypr[2]) + (.084); 
+        angle = atan2(ypr[0], ypr[2]) + (.084); 
         angular_rate = -(((float)gyro[1]/16.0)*(3.14/180.0));  //angular_rate = -((double)gyro[1]/131.0); // converted to radian
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
         }
+
+        char c;
+        if(Serial.available()> 1){
+          c = Serial.read();
+          switch(c){
+            case 'a':
+              angle_offset += 0.01;
+              break;
+            case 'd':
+              angle_offset -= 0.01;
+              break;
+
+          }
+        }
+        
+        pwm_Out();
+
 
 
 }
@@ -156,6 +173,23 @@ void pwm_Out(){
           pwm=300;
         }
 
+        Serial.print("Angle: ");
+        Serial.print(angle);
+        Serial.print("  Angular Rate: ");
+        Serial.print(angular_rate);
+        Serial.print("  PWM: ");
+        Serial.print(pwm);
+        Serial.print("  angle_offset: ");
+        Serial.println(angle_offset);
+//Serial.print("Angle: ");
+//Serial.print(angle);
+//      Serial.print("  Angle0: ");
+//        Serial.print(ypr[0]);
+//        Serial.print("  Angle 1: ");
+//        Serial.print(ypr[1]);
+//        Serial.print("  Angle 2: ");
+//        Serial.println(ypr[2]);
+        
        pwm_l = pwm + right_output;
        pwm_r = pwm + left_output;
        set_Motors(pwm_l, pwm_r);
@@ -163,8 +197,8 @@ void pwm_Out(){
 
 void set_Motors(int l_val, int r_val){
   
-      md.setM1Speed(l_val);
-      md.setM2Speed(r_val);
+      md.setM1Speed(-l_val);
+      md.setM2Speed(-r_val);
 }
 
 //interupt method for first wheel
@@ -198,16 +232,14 @@ void encoderA(){
 
     lastSignal_R = digitalRead(encoderPinA);  
     update_Odometry();
-    Serial.print(x);
-  Serial.print("   ");
-  Serial.print(y);
-  Serial.print("   ");
-  Serial.print(deltaLeft);
-  Serial.print("    ");
-  Serial.print(deltaRight);
-  Serial.print("    ");
-  Serial.println(theta_world);
-//   Serial.println(encoderRightPosition);
+//    Serial.print(x);
+//  Serial.print("   ");
+//  Serial.print(y);
+//  Serial.print("   ");
+//  Serial.print(deltaDistance);
+//  Serial.print("    ");
+//  Serial.println(theta_world);
+  // Serial.println(encoderLeftPosition);
 }
 
 //interupt method for other wheel
@@ -242,16 +274,12 @@ void encoderB(){
   }
   lastSignal_L = digitalRead(encoderPinB); 
   update_Odometry();
-  Serial.print(x);
-  Serial.print("   ");
-  Serial.print(y);
-  Serial.print("   ");
-  Serial.print(deltaLeft);
-  Serial.print("    ");
-  Serial.print(deltaRight);
-  Serial.print("    ");
-  Serial.println(theta_world);
-//   Serial.println(encoderRightPosition);
+//  Serial.print(x);
+//  Serial.print("   ");
+//  Serial.print(y);
+//  Serial.print("   ");
+//  Serial.println(theta_world);
+   //Serial.println(encoderRightPosition);
 }
 
 //Calculate Odometry Values
@@ -263,13 +291,13 @@ void update_Odometry(){
   deltaLeft = distanceLeftWheel - l_prev;
   deltaDistance = (deltaRight + deltaLeft) / 2;
   //Serial.println(deltaRight);
-  delta_theta_world = atan2(abs(deltaRight - deltaDistance), baseToWheel);
-  if(deltaLeft>deltaRight){
-      delta_theta_world=-1*delta_theta_world;
-  }
-  theta_world = theta_world + delta_theta_world;
+  delta_theta_world = atan2((deltaRight - deltaDistance), baseToWheel);
+//  if(deltaLeft>deltaRight){
+//      delta_theta_world=-1*delta_theta_world;
+//  }
+  theta_world = theta_world - delta_theta_world;
   x = x + deltaDistance * cos(theta_world);
-  y = y + deltaDistance * sin(theta_world); 
+  y = y + (deltaDistance) * sin(theta_world); 
 
   
   //if statments to make sure theta is within 2 Pi
