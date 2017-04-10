@@ -28,12 +28,15 @@ int paths[4][3] = {{0,10000,0},{0,0,0},{0,0,0},{0,0,0}};
 int current = 0;
 double left_output = 0;
 double right_output = 0;
-float angle_increase = 0;
 double scalar;
 float needed_distance = 0;
 float x_tracker = 0;
 float y_tracker = 0;
 float theta_tracker = 0;
+
+float start_time = 0;
+float end_time = 0;
+float time_step=0;
 
 //ODOMETRY VARIABLES
 //encoder trackers
@@ -44,7 +47,10 @@ float  DIAMETER  = 70.2;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
  float  deltaRight =0; 
   float  deltaLeft =0;
-
+  float theta_world_dot=0;
+float   delta_angle_translate = 0;
+float theta_world_offset = 3.14;
+float delta_pwm_rotate=0;
 float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
 
 float x = 0.0;           // x initial coordinate of mobile robot 
@@ -57,14 +63,19 @@ float Dl, Dr, avg_dist, theta;
 //BALANCING VARIABLES
 float K=20;
 float B=5;
+float Kr=10;
+float Br=5;
+float Kt=0;
+float Bt=0;
+float distance = 0;
+float distance_ref=0;
+float distance_dot=0;
+float theta_world_prev=0;
 int pwm,pwm_l,pwm_r;
 int i =0;
 float angle, angular_rate, angle_offset = .19;
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
-
-//odometry cap
-int o_cap =0;
 
 
 
@@ -154,8 +165,11 @@ void loop() {
 
           }
         }
-        
+        end_time = micros();
+        time_step=end_time-start_time; // micro sec
+        rotate();
         pwm_Out();
+        start_time = micros();
 
 
 
@@ -163,7 +177,7 @@ void loop() {
 
 void pwm_Out(){
   
-     pwm += -K*( (angle_offset + angle_increase) - angle)+B*(angular_rate);
+     pwm += -K*( (angle_offset + delta_angle_translate) - angle)+B*(angular_rate);
      
     //set max and min to 400 and -400 change value for next project to leave power for turning
         if(pwm<-300){
@@ -173,25 +187,20 @@ void pwm_Out(){
           pwm=300;
         }
 
-        Serial.print("Angle: ");
-        Serial.print(angle);
-        Serial.print("  Angular Rate: ");
-        Serial.print(angular_rate);
-        Serial.print("  PWM: ");
-        Serial.print(pwm);
-        Serial.print("  angle_offset: ");
-        Serial.println(angle_offset);
-//Serial.print("Angle: ");
-//Serial.print(angle);
-//      Serial.print("  Angle0: ");
-//        Serial.print(ypr[0]);
-//        Serial.print("  Angle 1: ");
-//        Serial.print(ypr[1]);
-//        Serial.print("  Angle 2: ");
-//        Serial.println(ypr[2]);
+//        Serial.print("Angle: ");
+//        Serial.print(angle);
+//        Serial.print("  Angular Rate: ");
+//        Serial.print(angular_rate);
+//        Serial.print("  PWM: ");
+//        Serial.print(pwm);
+//        Serial.print(" Theta World: ");
+//        Serial.print(theta_world);
+//        Serial.print("  rotate pwm: ");
+//        Serial.println(delta_pwm_rotate);
         
-       pwm_l = pwm + right_output;
-       pwm_r = pwm + left_output;
+        
+       pwm_l = pwm + delta_pwm_rotate;
+       pwm_r = pwm - delta_pwm_rotate;
        set_Motors(pwm_l, pwm_r);
 }
 
@@ -232,14 +241,14 @@ void encoderA(){
 
     lastSignal_R = digitalRead(encoderPinA);  
     update_Odometry();
-//    Serial.print(x);
-//  Serial.print("   ");
-//  Serial.print(y);
-//  Serial.print("   ");
-//  Serial.print(deltaDistance);
-//  Serial.print("    ");
-//  Serial.println(theta_world);
-  // Serial.println(encoderLeftPosition);
+        Serial.print("Angle: ");
+        Serial.print(angle);
+        Serial.print("  PWM: ");
+        Serial.print(pwm);
+        Serial.print(" Theta World: ");
+        Serial.print(theta_world);
+        Serial.print("  rotate pwm: ");
+        Serial.println(delta_pwm_rotate);
 }
 
 //interupt method for other wheel
@@ -274,12 +283,15 @@ void encoderB(){
   }
   lastSignal_L = digitalRead(encoderPinB); 
   update_Odometry();
-//  Serial.print(x);
-//  Serial.print("   ");
-//  Serial.print(y);
-//  Serial.print("   ");
-//  Serial.println(theta_world);
-   //Serial.println(encoderRightPosition);
+  Serial.print("Angle: ");
+        Serial.print(angle);
+  Serial.print("  PWM: ");
+        Serial.print(pwm);
+        Serial.print(" Theta World: ");
+        Serial.print(theta_world);
+        Serial.print("  rotate pwm: ");
+        Serial.println(delta_pwm_rotate);
+
 }
 
 //Calculate Odometry Values
@@ -290,14 +302,11 @@ void update_Odometry(){
   deltaRight = distanceRightWheel - r_prev; 
   deltaLeft = distanceLeftWheel - l_prev;
   deltaDistance = (deltaRight + deltaLeft) / 2;
-  //Serial.println(deltaRight);
   delta_theta_world = atan2((deltaRight - deltaDistance), baseToWheel);
-//  if(deltaLeft>deltaRight){
-//      delta_theta_world=-1*delta_theta_world;
-//  }
+  theta_world_prev=theta_world;
   theta_world = theta_world - delta_theta_world;
   x = x + deltaDistance * cos(theta_world);
-  y = y + (deltaDistance) * sin(theta_world); 
+  y = y + deltaDistance * sin(theta_world); 
 
   
   //if statments to make sure theta is within 2 Pi
@@ -310,48 +319,18 @@ void update_Odometry(){
 
   r_prev = distanceRightWheel;
   l_prev = distanceLeftWheel;
+  
 }
-//method to move our robot
-void move_Bot(){
-    //put values into translation and rotation values
-    //we have a 100pwm allowance need to cap that
-    //beginning of segment
-    if(needed_distance == -1){
-      x_tracker = x;
-      y_tracker = y;
-      theta_tracker = theta;
-      scalar = 100 / sqrt(paths[current][1]);   //calcuate the scalar for x in the motor output equation
-      needed_distance = avg_dist + paths[current][1];//assuming the type is 0; will implement for type 1 later
-    }
 
-    // y = scalar(-x^2) + 100;
-    right_output = ( scalar * pow(-distanceRightWheel, 2) ) + 100;
-    left_output  = ( scalar * pow(-distanceLeftWheel,  2) ) + 100;
-    
-    //values automatically capped between 0 and 100 pwm which is our limit
-    // will need to calculate the individual wheel distance travel for turning
-    if(right_output >= left_output){
-      angle_increase = left_output;
-      right_output = right_output - left_output;
-    }else{
-      angle_increase = right_output;
-      left_output = left_output - right_output;
-    }
-    error_correction();
-    
-    //check if we have finished the segment
-    //if so we move the current path up one and set the begining of path flag
-    if( avg_dist >= needed_distance ){
-      current++;
-      needed_distance = -1;
-      delay(20000);
-    }
-    //MOVE THE ROBOT USING ANGLE OFSSET NOT PWM
-    
+
+
+void rotate(){
+  theta_world_dot = (theta_world - theta_world_prev)/(time_step*1000000);
+  delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_world_dot);
 }
-//this will be our method for tweaking values so the robot
-//will handle errors in movement
-//for type 0: if we are farther than we should be lower pwm, if we are not as far as we should be up the pwm
-//for type 1: if the angle is higher or lower than it should be change the output for that specific wheel
-void error_correction(){}
+
+void translate(){
+  distance_dot = deltaDistance/(time_step*1000000);
+  delta_angle_translate = Kt*(distance_ref - distance) - Br *(distance_dot);
+}
 
