@@ -69,10 +69,10 @@ float K=25;//17
 float B=5;
 float Kr=10;
 float Br=5;
-float Kt=.0002;
-float Bt=0.00010;
+float Kt=.00005;
+float Bt=0.00001;
 float distance = 0;
-float distance_ref=0;
+float distance_ref=305;
 float distance_dot=0;
 float theta_world_prev=0;
 int pwm,pwm_l,pwm_r;
@@ -188,7 +188,7 @@ void loop() {
         end_time = micros();
         time_step=end_time-start_time; // micro sec
         //rotate();
-        //translate();
+        translate();
         pwm_Out();
         start_time = micros();
         //check if we have made it to the location, if so delay for 5 seconds
