@@ -22,14 +22,17 @@ DualMC33926MotorShield md;
 //error for pin
 int lastSignal_L = -1;
 int lastSignal_R = -1;
+int path_signal = -1;
 //MOVEMENT VARIABLES
 //distance in mm
-int paths[4][3] = {{0,10000,0},{0,0,0},{0,0,0},{0,0,0}};
+int paths[7][3] = {{0,2000,0},{1,500,-90},{0,500,0},{1,1000,-270},{0,2000,0},{1,500,180},{0,3000,0}};
+int numberOf = 7;
 int current = 0;
 double left_output = 0;
 double right_output = 0;
 double scalar;
 float needed_distance = 0;
+float needed_theta =  0;
 float x_tracker = 0;
 float y_tracker = 0;
 float theta_tracker = 0;
@@ -42,6 +45,7 @@ float time_step=0;
 //encoder trackers
 volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
+float translate_add =0;
 
 float  DIAMETER  = 70.2;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
@@ -73,7 +77,7 @@ float distance_dot=0;
 float theta_world_prev=0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .22;
+float angle, angular_rate, angle_offset = .20;
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -111,6 +115,15 @@ void setup() {
 
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
+
+    //set angles for non turning paths
+    for(int i=0; i<numberOf; i++){
+      if(i != 0){
+          if(paths[i][0] == 0){
+            paths[i][2] == paths[i-1][2];  
+          }
+      }  
+    }
 
     //Pin stuff
     pinMode(PWM_L, OUTPUT);
@@ -165,12 +178,24 @@ void loop() {
 
           }
         }
+        //distance_ref theta_world_offset
+//        if(path_signal = -1){
+//            distance_ref = paths[current][1];
+//            theta_world_offset = paths[current][2];
+//            needed_distance += distance_ref;
+//            needed_theta = paths[current][2];  
+//        }
         end_time = micros();
         time_step=end_time-start_time; // micro sec
         //rotate();
         translate();
         pwm_Out();
         start_time = micros();
+        //check if we have made it to the location, if so delay for 5 seconds
+//        if(distance == needed_distance && theta_world == needed_theta){
+//          current ++;
+//          delay(5000);  
+//        }
 
 
 
@@ -191,6 +216,7 @@ void pwm_Out(){
         else if(pwm>300){
           pwm=300;
         }
+        pwm = pwm + translate_add;
         
        pwm_l = pwm + delta_pwm_rotate;
        pwm_r = pwm - delta_pwm_rotate;
@@ -326,12 +352,15 @@ void rotate(){
 
 void translate(){
   distance_dot = deltaDistance/(time_step*1000000);
+  translate_add = 0;
   delta_angle_translate = Kt*(distance_ref - distance) - Bt *(distance_dot);
-  if((delta_angle_translate)>0.2){
-    delta_angle_translate=0.2;
+  if((delta_angle_translate)>0.01){
+    delta_angle_translate=0.01;
+    translate_add = -8;
   }
-  else if (delta_angle_translate<-0.2){
-    delta_angle_translate=-0.2;
+  else if (delta_angle_translate< -0.01){
+    delta_angle_translate= -0.01;
+    translate_add = 8;
   }
 }
 
