@@ -65,7 +65,7 @@ float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=10;
+float K=25;//17
 float B=5;
 float Kr=10;
 float Br=5;
@@ -188,7 +188,7 @@ void loop() {
         end_time = micros();
         time_step=end_time-start_time; // micro sec
         //rotate();
-        translate();
+        //translate();
         pwm_Out();
         start_time = micros();
         //check if we have made it to the location, if so delay for 5 seconds
@@ -324,6 +324,9 @@ void update_Odometry(){
   deltaDistance = (deltaRight + deltaLeft) / 2;
   distance = distance + deltaDistance;
   delta_theta_world = atan2((deltaRight - deltaDistance), baseToWheel);
+
+  //distance = atan2(distanceRightWheel-(distanceRightWheel+distanceLeftWheel)/2,baseToWheel);
+  
   theta_world_prev=theta_world;
   theta_world = theta_world - delta_theta_world; //try mapping 0-5.5 rad to 0 - 2 PI
   x = x + deltaDistance * cos(theta_world);
@@ -346,21 +349,18 @@ void update_Odometry(){
 
 
 void rotate(){
-  theta_world_dot = (theta_world - theta_world_prev)/(time_step*1000000);
+  theta_world_dot = (theta_world - theta_world_prev)/(time_step/1000000);
   delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_world_dot);
 }
 
 void translate(){
-  distance_dot = deltaDistance/(time_step*1000000);
-  translate_add = 0;
+  distance_dot = deltaDistance/(time_step/1000000);
   delta_angle_translate = Kt*(distance_ref - distance) - Bt *(distance_dot);
-  if((delta_angle_translate)>0.01){
-    delta_angle_translate=0.01;
-    translate_add = -8;
+  if((delta_angle_translate)>0.075){
+    delta_angle_translate=0.075;
   }
-  else if (delta_angle_translate< -0.01){
-    delta_angle_translate= -0.01;
-    translate_add = 8;
+  else if (delta_angle_translate< -0.075){
+    delta_angle_translate= -0.075;
   }
 }
 
