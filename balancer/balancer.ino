@@ -51,7 +51,7 @@ float distanceLeftWheel, distanceRightWheel, deltaDistance=0, delta_theta_world=
 float   delta_angle_translate = 0;
 float theta_world_offset = 3.14;
 float delta_pwm_rotate=0;
-float ENCODER_RESOLUTION = 32;      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION = 40;      //encoder resolution (in pulses per revolution)
 
 float x = 0.0;           // x initial coordinate of mobile robot 
 float y = 0.0;           // y initial coordinate of mobile robot 
@@ -65,15 +65,15 @@ float K=10;
 float B=5;
 float Kr=10;
 float Br=5;
-float Kt=.0001;
-float Bt=0.00005;
+float Kt=.0002;
+float Bt=0.00010;
 float distance = 0;
-float distance_ref=200;
+float distance_ref=0;
 float distance_dot=0;
 float theta_world_prev=0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .17;
+float angle, angular_rate, angle_offset = .22;
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -179,7 +179,11 @@ void loop() {
 void pwm_Out(){
   
      pwm += -K*( (angle_offset - delta_angle_translate) - angle)+B*(angular_rate);
-     
+     Serial.print(B*(angular_rate));
+     Serial.print("  ");
+     Serial.print(-K*( (angle_offset - delta_angle_translate) - angle));
+     Serial.print("   ");
+     Serial.println(pwm);
     //set max and min to 400 and -400 change value for next project to leave power for turning
         if(pwm<-300){
           pwm=-300;
@@ -187,18 +191,6 @@ void pwm_Out(){
         else if(pwm>300){
           pwm=300;
         }
-
-//        Serial.print("Angle: ");
-//        Serial.print(angle);
-//        Serial.print("  Angular Rate: ");
-//        Serial.print(angular_rate);
-//        Serial.print("  PWM: ");
-//        Serial.print(pwm);
-//        Serial.print(" Theta World: ");
-//        Serial.print(theta_world);
-//        Serial.print("  rotate pwm: ");
-//        Serial.println(delta_pwm_rotate);
-        
         
        pwm_l = pwm + delta_pwm_rotate;
        pwm_r = pwm - delta_pwm_rotate;
@@ -242,15 +234,15 @@ void encoderA(){
 
     lastSignal_R = digitalRead(encoderPinA);  
     update_Odometry();
-        Serial.print("Distance: ");
-        Serial.print(distance);
-        Serial.print("  Distance Dot: ");
-        Serial.print(distance_dot);
-        Serial.print("  PWM: ");
-        Serial.print(pwm);
-        
-        Serial.print("  translate angle: ");
-        Serial.println(delta_angle_translate);
+//        Serial.print("Distance: ");
+//        Serial.print(distance);
+//        Serial.print("  Distance Dot: ");
+//        Serial.print(distance_dot);
+//        Serial.print("  PWM: ");
+//        Serial.print(pwm);
+//        
+//        Serial.print("  translate angle: ");
+//        Serial.println(delta_angle_translate);
 }
 
 //interupt method for other wheel
@@ -263,36 +255,36 @@ void encoderB(){
   {   
     if (digitalRead(encoderPinB) == LOW) 
     {  
-      encoderRightPosition = encoderRightPosition - 1;         
+      encoderRightPosition = encoderRightPosition + 1;         
     } 
     else 
     {
-      encoderRightPosition = encoderRightPosition + 1;
+      encoderRightPosition = encoderRightPosition - 1;
     }
   }
   else                                       
   { 
     if (digitalRead(encoderPinB) == LOW) 
     {                                       
-        encoderRightPosition = encoderRightPosition + 1;          
+        encoderRightPosition = encoderRightPosition - 1;          
     } 
     else 
     {
       //Serial.println("Counterclockwise and backward");
-      encoderRightPosition = encoderRightPosition - 1;         
+      encoderRightPosition = encoderRightPosition + 1;         
     }
 
   }
   lastSignal_L = digitalRead(encoderPinB); 
   update_Odometry();
-        Serial.print("Distance: ");
-        Serial.print(distance);
-        Serial.print("  Dist Dot: ");
-        Serial.print(distance_dot);
-        Serial.print("  PWM: ");
-        Serial.print(pwm);
-        Serial.print("  translate angle: ");
-        Serial.println(delta_angle_translate);
+//        Serial.print("Distance: ");
+//        Serial.print(distance);
+//        Serial.print("  Dist Dot: ");
+//        Serial.print(distance_dot);
+//        Serial.print("  PWM: ");
+//        Serial.print(pwm);
+//        Serial.print("  translate angle: ");
+//        Serial.println(delta_angle_translate);
 
 }
 
