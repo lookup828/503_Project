@@ -31,34 +31,32 @@ int current = 0;
 double left_output = 0;
 double right_output = 0;
 double scalar;
-float needed_distance = 0;
-float needed_theta =  0;
-float x_tracker = 0;
-float y_tracker = 0;
-float theta_tracker = 0;
 
-float start_time = 0;
-float time_step=0;
+float x_tracker = 0.0;
+float y_tracker = 0.0;
+float theta_tracker = 0.0;
+float end_time=0.0;
+float start_time = 0.0;
+float time_step=0.05;
 
 //ODOMETRY VARIABLES
 //encoder trackers
 volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
 volatile int encoderRightPosition = 0;
-float translate_add =0;
 
 float  DIAMETER  = 70.2;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
- float  deltaRight =0; 
-  float  deltaLeft =0;
+ float  deltaRight =0.0; 
+  float  deltaLeft =0.0;
   float theta_world_dot=0;
-float   delta_angle_translate = 0;
+float   delta_angle_translate = 0.0;
 float theta_world_offset = 3.14;
 float delta_pwm_rotate=0;
 float ENCODER_RESOLUTION = 40;      //encoder resolution (in pulses per revolution)
 
 float x = 0.0;           // x initial coordinate of mobile robot 
 float y = 0.0;           // y initial coordinate of mobile robot 
-float theta_world  = 0;       // The initial theta_world of mobile robot 
+float theta_world  = 0.0;       // The initial theta_world of mobile robot 
 float baseToWheel = 111.2;       //  the wheelbase of the mobile robot in mm
 float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
@@ -71,7 +69,7 @@ float Br=5;
 float Kt=0.001;
 float Bt=0.0001;
 float distance = 0;
-float distance_ref=152.5;
+float distance_ref=0;
 float distance_dot;
 
 float theta_world_prev=0;
@@ -190,12 +188,6 @@ void loop() {
         //rotate();
         //translate();
         pwm_Out();
-        
-        //check if we have made it to the location, if so delay for 5 seconds
-//        if(distance == needed_distance && theta_world == needed_theta){
-//          current ++;
-//          delay(5000);  
-//        }
 
 
 
@@ -204,7 +196,7 @@ void loop() {
 void pwm_Out(){
   
      //pwm += -K*( (angle_offset - delta_angle_translate) - angle) +B*(angular_rate);
-      pwm += K*(angle_offset-angle) - B*(angular_rate); 
+      pwm += K*(angle_offset+delta_angle_translate-angle) - B*(angular_rate); 
     
 //     Serial.print(B*(angular_rate));
 //     Serial.print("  ");
@@ -218,7 +210,6 @@ void pwm_Out(){
         else if(pwm>300){
           pwm=300;
         }
-        pwm = pwm + translate_add;
         
        pwm_l = pwm - delta_pwm_rotate;
        pwm_r = pwm + delta_pwm_rotate;
@@ -264,21 +255,8 @@ void encoderA(){
 
     lastSignal_R = digitalRead(encoderPinA);  
     //time_step=start_time-end_time;
-    //update_Odometry();
-//    Serial.print("X");
-//    Serial.println(x);
-//        Serial.print("Distance: ");
-//        Serial.print(distance);
-//        Serial.print("  Distance Dot: ");
-//        Serial.print(distance_dot);
-//        Serial.print("  PWM: ");
-//        Serial.print(pwm);
-//        
-//        Serial.print("  translate angle: ");
-//        Serial.println(delta_angle_translate);
-          //Serial.println(encoderLeftPosition);
-          //Serial.print("X");
-          //Serial.println(x);
+    update_Odometry();
+
           
 }
 
@@ -317,17 +295,8 @@ void encoderB(){
   lastSignal_L = digitalRead(encoderPinB); 
   //Serial.println(encoderRightPosition);
   //time_step=start_time-end_time;
-   //update_Odometry();
-//   Serial.print("X");
-//  Serial.println(x);
-//        Serial.print("Distance: ");
-//        Serial.print(distance);
-//        Serial.print("  Dist Dot: ");
-//        Serial.print(distance_dot);
-//        Serial.print("  PWM: ");
-//        Serial.print(pwm);
-//        Serial.print("  translate angle: ");
-//        Serial.println(delta_angle_translate);
+   update_Odometry();
+
    
 
 }
@@ -362,6 +331,7 @@ void update_Odometry(){
 
   r_prev = distanceRightWheel;
   l_prev = distanceLeftWheel;
+
   
   
   
@@ -376,20 +346,9 @@ void rotate(){
 }
 
 void translate(){
-  distance_dot = deltaDistance/(time_step/1000000);
-//  Serial.print("timestep ");
-//  Serial.print(time_step/1000000);
-//  Serial.print(" ");
-//  Serial.print("deltaDistance: ");
-//  Serial.print(deltaDistance);
-//  Serial.print(" ");
-//  Serial.print("distance_dot: ");
-//  Serial.print(distance_dot);
-//  Serial.print(" ");
-  
+
   delta_angle_translate = Kt*(distance_ref - distance) - Bt *(distance_dot);
-  Serial.println("delta_angle_translate");
-  Serial.println(delta_angle_translate);
+
   
   if((delta_angle_translate)>0.05){
     delta_angle_translate=0.05;
