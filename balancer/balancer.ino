@@ -36,10 +36,10 @@ float needed_theta =  0;
 float x_tracker = 0;
 float y_tracker = 0;
 float theta_tracker = 0;
-
+float distance_track=0;
 float start_time = 0;
-float time_step=0;
-
+float time_step=0.05;
+float end_time=0;
 //ODOMETRY VARIABLES
 //encoder trackers
 volatile int encoderLeftPosition = 0;   //NEED TO FIGURE OUT WHICH IS WHICH
@@ -68,11 +68,11 @@ float K=8;//18  //12
 float B=1.8;//2    //2
 float Kr=10;
 float Br=5;
-float Kt=0.001;
-float Bt=0.0001;
+float Kt=0.009;
+float Bt=0.0009;
 float distance = 0;
-float distance_ref=152.5;
-float distance_dot;
+float distance_ref=0;
+float distance_dot=0;
 
 float theta_world_prev=0;
 int pwm,pwm_l,pwm_r;
@@ -116,14 +116,14 @@ void setup() {
     //Empty the Buffer
     while (Serial.available() && Serial.read()); // empty buffer
 
-    //set angles for non turning paths
-    for(int i=0; i<numberOf; i++){
-      if(i != 0){
-          if(paths[i][0] == 0){
-            paths[i][2] == paths[i-1][2];  
-          }
-      }  
-    }
+//    //set angles for non turning paths
+//    for(int i=0; i<numberOf; i++){
+//      if(i != 0){
+//          if(paths[i][0] == 0){
+//            paths[i][2] == paths[i-1][2];  
+//          }
+//      }  
+//    }
 
     //Pin stuff
     pinMode(PWM_L, OUTPUT);
@@ -188,7 +188,7 @@ void loop() {
 //        }
        
         //rotate();
-        //translate();
+        translate();
         pwm_Out();
         
         //check if we have made it to the location, if so delay for 5 seconds
@@ -204,13 +204,9 @@ void loop() {
 void pwm_Out(){
   
      //pwm += -K*( (angle_offset - delta_angle_translate) - angle) +B*(angular_rate);
-      pwm += K*(angle_offset-angle) - B*(angular_rate); 
+      pwm += K*(angle_offset+delta_angle_translate-angle) - B*(angular_rate); 
     
-//     Serial.print(B*(angular_rate));
-//     Serial.print("  ");
-//     Serial.print(-K*( (angle_offset - delta_angle_translate) - angle));
-//     Serial.print("   ");
-//     Serial.println(pwm);
+
     //set max and min to 400 and -400 change value for next project to leave power for turning
         if(pwm<-300){
           pwm=-300;
@@ -218,7 +214,7 @@ void pwm_Out(){
         else if(pwm>300){
           pwm=300;
         }
-        pwm = pwm + translate_add;
+        
         
        pwm_l = pwm - delta_pwm_rotate;
        pwm_r = pwm + delta_pwm_rotate;
@@ -233,8 +229,7 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-//  float end_time=start_time;
-//  start_time = micros();
+
     if(digitalRead(encoderPinA) == lastSignal_R){
       return;
     }
@@ -264,7 +259,7 @@ void encoderA(){
 
     lastSignal_R = digitalRead(encoderPinA);  
     //time_step=start_time-end_time;
-    //update_Odometry();
+    update_Odometry();
 //    Serial.print("X");
 //    Serial.println(x);
 //        Serial.print("Distance: ");
@@ -284,8 +279,7 @@ void encoderA(){
 
 //interupt method for other wheel
 void encoderB(){
-//  float end_time=start_time;
-//  start_time = micros();
+
 //  
   if(digitalRead(encoderPinB) == lastSignal_L){
       return;
@@ -317,7 +311,7 @@ void encoderB(){
   lastSignal_L = digitalRead(encoderPinB); 
   //Serial.println(encoderRightPosition);
   //time_step=start_time-end_time;
-   //update_Odometry();
+   update_Odometry();
 //   Serial.print("X");
 //  Serial.println(x);
 //        Serial.print("Distance: ");
@@ -335,16 +329,18 @@ void encoderB(){
 //Calculate Odometry Values
 void update_Odometry(){
 
+  
+  
+
+
   distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
   distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution )
   deltaRight = distanceRightWheel - r_prev; 
   deltaLeft = distanceLeftWheel - l_prev;
   deltaDistance = (deltaRight + deltaLeft) / 2;
   distance = distance + deltaDistance;
+  distance_track = distance_track + deltaDistance;
   delta_theta_world = atan2((deltaRight - deltaDistance), baseToWheel);
-
-  //distance = atan2(distanceRightWheel-(distanceRightWheel+distanceLeftWheel)/2,baseToWheel);
-  
   theta_world_prev=theta_world;
   theta_world = theta_world - delta_theta_world; //try mapping 0-5.5 rad to 0 - 2 PI
   x = x + deltaDistance * cos(theta_world);
@@ -362,10 +358,19 @@ void update_Odometry(){
 
   r_prev = distanceRightWheel;
   l_prev = distanceLeftWheel;
-  
-  
-  
 
+
+  start_time=millis();
+  
+  //Serial.println(distance);
+
+  //every 50 ms update velocity
+  if((start_time-end_time)>=50){
+    
+    distance_dot=(distance_track)/time_step;
+    end_time=start_time;
+    distance_track=0;
+  }
 }
 
 
@@ -376,26 +381,18 @@ void rotate(){
 }
 
 void translate(){
-  distance_dot = deltaDistance/(time_step/1000000);
-//  Serial.print("timestep ");
-//  Serial.print(time_step/1000000);
-//  Serial.print(" ");
-//  Serial.print("deltaDistance: ");
-//  Serial.print(deltaDistance);
-//  Serial.print(" ");
-//  Serial.print("distance_dot: ");
-//  Serial.print(distance_dot);
-//  Serial.print(" ");
-  
   delta_angle_translate = Kt*(distance_ref - distance) - Bt *(distance_dot);
-  Serial.println("delta_angle_translate");
-  Serial.println(delta_angle_translate);
   
-  if((delta_angle_translate)>0.05){
-    delta_angle_translate=0.05;
+  if((delta_angle_translate)>0.1){
+    delta_angle_translate=0.1;
   }
-  if (delta_angle_translate< -0.05){
-    delta_angle_translate= -0.05;
+  if (delta_angle_translate< -0.1){
+    delta_angle_translate= -0.1;
   }
+  Serial.print(distance);
+    Serial.print("  ");
+    Serial.print(distance_dot);
+    Serial.print("   ");
+    Serial.println(delta_angle_translate);
 }
 
