@@ -64,19 +64,20 @@ float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=12;//18
-float B=2;//2
+float K=8;//18  //12
+float B=1.8;//2    //2
 float Kr=10;
 float Br=5;
 float Kt=0.001;
 float Bt=0.0001;
 float distance = 0;
-float distance_ref=305;
-float distance_dot=0;
+float distance_ref=152.5;
+float distance_dot;
+
 float theta_world_prev=0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .195;
+float angle, angular_rate, angle_offset = .11;  //0.195
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -139,7 +140,7 @@ void setup() {
     digitalWrite(encoderPinB, HIGH);       // turn on pull-up resistor
 
     attachInterrupt(0, encoderA, CHANGE);//Bind interupt pin2
-    attachInterrupt(1, encoderB, HIGH);//Bind interupt pin3
+    attachInterrupt(1, encoderB, CHANGE);//Bind interupt pin3
 
     //delay 10 seconds
     //delay(10000);
@@ -158,7 +159,8 @@ void loop() {
         //IF YOU INPLUG THE IMU TO TEST OTHER PARTS YOU NEED TO UNCOMMENT THE NEXT LINE TO RUN PAST IT
         mpu.getMotion6(&ypr[0],&ypr[1],&ypr[2],&gyro[0],&gyro[1],&gyro[2]);
  
-        angle = atan2(ypr[0], ypr[2]) + (.084); 
+        //angle = atan2(ypr[0], ypr[2]) + (.084); 
+        angle = atan2(ypr[0], ypr[2]);
         angular_rate = -(((float)gyro[1]/16.0)*(3.14/180.0));  //angular_rate = -((double)gyro[1]/131.0); // converted to radian
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
@@ -186,7 +188,7 @@ void loop() {
 //        }
        
         //rotate();
-        translate();
+        //translate();
         pwm_Out();
         
         //check if we have made it to the location, if so delay for 5 seconds
@@ -201,7 +203,9 @@ void loop() {
 
 void pwm_Out(){
   
-     pwm += -K*( (angle_offset - delta_angle_translate) - angle)+B*(angular_rate);
+     //pwm += -K*( (angle_offset - delta_angle_translate) - angle) +B*(angular_rate);
+      pwm += K*(angle_offset-angle) - B*(angular_rate); 
+    
 //     Serial.print(B*(angular_rate));
 //     Serial.print("  ");
 //     Serial.print(-K*( (angle_offset - delta_angle_translate) - angle));
@@ -216,19 +220,21 @@ void pwm_Out(){
         }
         pwm = pwm + translate_add;
         
-       pwm_l = pwm + delta_pwm_rotate;
-       pwm_r = pwm - delta_pwm_rotate;
+       pwm_l = pwm - delta_pwm_rotate;
+       pwm_r = pwm + delta_pwm_rotate;
        set_Motors(pwm_l, pwm_r);
 }
 
 void set_Motors(int l_val, int r_val){
   
-      md.setM1Speed(-l_val);
-      md.setM2Speed(-r_val);
+      md.setM1Speed(l_val);
+      md.setM2Speed(r_val);
 }
 
 //interupt method for first wheel
 void encoderA(){
+//  float end_time=start_time;
+//  start_time = micros();
     if(digitalRead(encoderPinA) == lastSignal_R){
       return;
     }
@@ -257,21 +263,30 @@ void encoderA(){
   }
 
     lastSignal_R = digitalRead(encoderPinA);  
-    update_Odometry();
-        Serial.print("Distance: ");
-        Serial.print(distance);
-        Serial.print("  Distance Dot: ");
-        Serial.print(distance_dot);
-        Serial.print("  PWM: ");
-        Serial.print(pwm);
-        
-        Serial.print("  translate angle: ");
-        Serial.println(delta_angle_translate);
+    //time_step=start_time-end_time;
+    //update_Odometry();
+//    Serial.print("X");
+//    Serial.println(x);
+//        Serial.print("Distance: ");
+//        Serial.print(distance);
+//        Serial.print("  Distance Dot: ");
+//        Serial.print(distance_dot);
+//        Serial.print("  PWM: ");
+//        Serial.print(pwm);
+//        
+//        Serial.print("  translate angle: ");
+//        Serial.println(delta_angle_translate);
+          //Serial.println(encoderLeftPosition);
+          //Serial.print("X");
+          //Serial.println(x);
+          
 }
 
 //interupt method for other wheel
 void encoderB(){
-  
+//  float end_time=start_time;
+//  start_time = micros();
+//  
   if(digitalRead(encoderPinB) == lastSignal_L){
       return;
     }
@@ -279,36 +294,41 @@ void encoderB(){
   {   
     if (digitalRead(encoderPinB) == LOW) 
     {  
-      encoderRightPosition = encoderRightPosition + 1;         
+      encoderRightPosition = encoderRightPosition - 1;         
     } 
     else 
     {
-      encoderRightPosition = encoderRightPosition - 1;
+      encoderRightPosition = encoderRightPosition + 1;
     }
   }
   else                                       
   { 
     if (digitalRead(encoderPinB) == LOW) 
     {                                       
-        encoderRightPosition = encoderRightPosition - 1;          
+        encoderRightPosition = encoderRightPosition + 1;          
     } 
     else 
     {
       //Serial.println("Counterclockwise and backward");
-      encoderRightPosition = encoderRightPosition + 1;         
+      encoderRightPosition = encoderRightPosition - 1;         
     }
 
   }
   lastSignal_L = digitalRead(encoderPinB); 
-  update_Odometry();
-        Serial.print("Distance: ");
-        Serial.print(distance);
-        Serial.print("  Dist Dot: ");
-        Serial.print(distance_dot);
-        Serial.print("  PWM: ");
-        Serial.print(pwm);
-        Serial.print("  translate angle: ");
-        Serial.println(delta_angle_translate);
+  //Serial.println(encoderRightPosition);
+  //time_step=start_time-end_time;
+   //update_Odometry();
+//   Serial.print("X");
+//  Serial.println(x);
+//        Serial.print("Distance: ");
+//        Serial.print(distance);
+//        Serial.print("  Dist Dot: ");
+//        Serial.print(distance_dot);
+//        Serial.print("  PWM: ");
+//        Serial.print(pwm);
+//        Serial.print("  translate angle: ");
+//        Serial.println(delta_angle_translate);
+   
 
 }
 
@@ -336,16 +356,16 @@ void update_Odometry(){
   if(theta_world > 2*PI){
     theta_world -= 2*PI;
   }
-  else if(theta_world < -1*PI){
+  else if(theta_world < 0){
     theta_world += 2*PI;
   }
 
   r_prev = distanceRightWheel;
   l_prev = distanceLeftWheel;
-  float end_time=start_time;
-  start_time = micros();
-  time_step=start_time-end_time;
   
+  
+  
+
 }
 
 
@@ -357,12 +377,25 @@ void rotate(){
 
 void translate(){
   distance_dot = deltaDistance/(time_step/1000000);
+//  Serial.print("timestep ");
+//  Serial.print(time_step/1000000);
+//  Serial.print(" ");
+//  Serial.print("deltaDistance: ");
+//  Serial.print(deltaDistance);
+//  Serial.print(" ");
+//  Serial.print("distance_dot: ");
+//  Serial.print(distance_dot);
+//  Serial.print(" ");
+  
   delta_angle_translate = Kt*(distance_ref - distance) - Bt *(distance_dot);
-  if((delta_angle_translate)>0.1){
-    delta_angle_translate=0.1;
+  Serial.println("delta_angle_translate");
+  Serial.println(delta_angle_translate);
+  
+  if((delta_angle_translate)>0.05){
+    delta_angle_translate=0.05;
   }
-  if (delta_angle_translate< -0.1){
-    delta_angle_translate= -0.1;
+  if (delta_angle_translate< -0.05){
+    delta_angle_translate= -0.05;
   }
 }
 
