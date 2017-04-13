@@ -25,7 +25,7 @@ int lastSignal_R = -1;
 int path_signal = -1;
 //MOVEMENT VARIABLES
 //distance in mm
-int paths[7][3] = {{0,2000,0},{1,500,-90},{0,500,0},{1,1000,-270},{0,2000,0},{1,500,180},{0,3000,0}};
+int paths[7][3] = {{0,2000,0},{1,500,-1.57},{0,500,0},{1,1000,-4.71},{0,2000,0},{1,500,3.14},{0,3000,0}};
 int numberOf = 7;
 int current = 0;
 double left_output = 0;
@@ -69,7 +69,7 @@ float K=25;//17
 float B=5;
 float Kr=10;
 float Br=5;
-float Kt=.00005;
+float Kt=0.00005;
 float Bt=0.00001;
 float distance = 0;
 float distance_ref=305;
@@ -179,23 +179,26 @@ void loop() {
           }
         }
         //distance_ref theta_world_offset
-//        if(path_signal = -1){
-//            distance_ref = paths[current][1];
-//            theta_world_offset = paths[current][2];
-//            needed_distance += distance_ref;
-//            needed_theta = paths[current][2];  
-//        }
+        if(path_signal = -1){
+            distance_ref = paths[current][1];
+            theta_world_offset = paths[current][2];
+            needed_distance += distance_ref;
+            needed_theta = paths[current][2];
+            path_signal = 1;  
+        }
         end_time = micros();
         time_step=end_time-start_time; // micro sec
-        //rotate();
+        rotate();
         translate();
         pwm_Out();
         start_time = micros();
-        //check if we have made it to the location, if so delay for 5 seconds
-//        if(distance == needed_distance && theta_world == needed_theta){
-//          current ++;
-//          delay(5000);  
-//        }
+        //check if we have made it to the location(within 100mm and 5 degrees) 
+        //if so delay for 5 seconds
+        if(( needed_distance - 50 <= distance && distance <= needed_distance + 50 ) && (theta_world <= needed_theta + .17 && needed_theta - .17 <= theta_world) ){
+          current ++;
+          path_signal = -1;
+          delay(5000);  
+        }
 
 
 
@@ -351,6 +354,14 @@ void update_Odometry(){
 void rotate(){
   theta_world_dot = (theta_world - theta_world_prev)/(time_step/1000000);
   delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_world_dot);
+  
+  if((delta_pwm_rotate) > 60){
+    delta_pwm_rotate=0.075;
+  }
+  else if (delta_pwm_rotate< -60){
+    delta_pwm_rotate= -60;
+  }
+  
 }
 
 void translate(){
