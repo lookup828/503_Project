@@ -25,7 +25,7 @@ int lastSignal_R = -1;
 int path_signal = -1;
 //MOVEMENT VARIABLES
 //distance in mm
-int paths[7][3] = {{0,2000,0},{1,500,-1.57},{0,500,0},{1,1000,-4.71},{0,2000,0},{1,500,3.14},{0,3000,0}};
+float paths[7][3] = {{0,2000,0},{1,500,-1.57},{0,500,0},{1,1000,-4.71},{0,2000,0},{1,500,3.14},{0,3000,0}};
 int numberOf = 7;
 int current = 0;
 double left_output = 0;
