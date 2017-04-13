@@ -38,7 +38,6 @@ float y_tracker = 0;
 float theta_tracker = 0;
 
 float start_time = 0;
-float end_time = 0;
 float time_step=0;
 
 //ODOMETRY VARIABLES
@@ -65,19 +64,19 @@ float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=25;//17
-float B=5;
+float K=12;//18
+float B=2;//2
 float Kr=10;
 float Br=5;
-float Kt=0.00005;
-float Bt=0.00001;
+float Kt=0.001;
+float Bt=0.0001;
 float distance = 0;
 float distance_ref=305;
 float distance_dot=0;
 float theta_world_prev=0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .20;
+float angle, angular_rate, angle_offset = .195;
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 
@@ -186,12 +185,9 @@ void loop() {
             needed_theta = paths[current][2];
             path_signal = 1;  
         }
-        end_time = micros();
-        time_step=end_time-start_time; // micro sec
         rotate();
         translate();
         pwm_Out();
-        start_time = micros();
         //check if we have made it to the location(within 100mm and 5 degrees) 
         //if so delay for 5 seconds
         if(( needed_distance - 50 <= distance && distance <= needed_distance + 50 ) && (theta_world <= needed_theta + .17 && needed_theta - .17 <= theta_world) ){
@@ -200,18 +196,16 @@ void loop() {
           delay(5000);  
         }
 
-
-
 }
 
 void pwm_Out(){
   
      pwm += -K*( (angle_offset - delta_angle_translate) - angle)+B*(angular_rate);
-     Serial.print(B*(angular_rate));
-     Serial.print("  ");
-     Serial.print(-K*( (angle_offset - delta_angle_translate) - angle));
-     Serial.print("   ");
-     Serial.println(pwm);
+//     Serial.print(B*(angular_rate));
+//     Serial.print("  ");
+//     Serial.print(-K*( (angle_offset - delta_angle_translate) - angle));
+//     Serial.print("   ");
+//     Serial.println(pwm);
     //set max and min to 400 and -400 change value for next project to leave power for turning
         if(pwm<-300){
           pwm=-300;
@@ -263,15 +257,15 @@ void encoderA(){
 
     lastSignal_R = digitalRead(encoderPinA);  
     update_Odometry();
-//        Serial.print("Distance: ");
-//        Serial.print(distance);
-//        Serial.print("  Distance Dot: ");
-//        Serial.print(distance_dot);
-//        Serial.print("  PWM: ");
-//        Serial.print(pwm);
-//        
-//        Serial.print("  translate angle: ");
-//        Serial.println(delta_angle_translate);
+        Serial.print("Distance: ");
+        Serial.print(distance);
+        Serial.print("  Distance Dot: ");
+        Serial.print(distance_dot);
+        Serial.print("  PWM: ");
+        Serial.print(pwm);
+        
+        Serial.print("  translate angle: ");
+        Serial.println(delta_angle_translate);
 }
 
 //interupt method for other wheel
@@ -306,14 +300,14 @@ void encoderB(){
   }
   lastSignal_L = digitalRead(encoderPinB); 
   update_Odometry();
-//        Serial.print("Distance: ");
-//        Serial.print(distance);
-//        Serial.print("  Dist Dot: ");
-//        Serial.print(distance_dot);
-//        Serial.print("  PWM: ");
-//        Serial.print(pwm);
-//        Serial.print("  translate angle: ");
-//        Serial.println(delta_angle_translate);
+        Serial.print("Distance: ");
+        Serial.print(distance);
+        Serial.print("  Dist Dot: ");
+        Serial.print(distance_dot);
+        Serial.print("  PWM: ");
+        Serial.print(pwm);
+        Serial.print("  translate angle: ");
+        Serial.println(delta_angle_translate);
 
 }
 
@@ -336,6 +330,7 @@ void update_Odometry(){
   y = y + deltaDistance * sin(theta_world); 
 
   
+  
   //if statments to make sure theta is within 2 Pi
   if(theta_world > 2*PI){
     theta_world -= 2*PI;
@@ -346,6 +341,9 @@ void update_Odometry(){
 
   r_prev = distanceRightWheel;
   l_prev = distanceLeftWheel;
+  float end_time=start_time;
+  start_time = micros();
+  time_step=start_time-end_time;
   
 }
 
@@ -356,10 +354,10 @@ void rotate(){
   delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_world_dot);
   
   if((delta_pwm_rotate) > 60){
-    delta_pwm_rotate=0.075;
+    delta_pwm_rotate = 60;
   }
   else if (delta_pwm_rotate< -60){
-    delta_pwm_rotate= -60;
+    delta_pwm_rotate = -60;
   }
   
 }
@@ -370,7 +368,7 @@ void translate(){
   if((delta_angle_translate)>0.075){
     delta_angle_translate=0.075;
   }
-  else if (delta_angle_translate< -0.075){
+  if (delta_angle_translate< -0.075){
     delta_angle_translate= -0.075;
   }
 }
