@@ -25,7 +25,7 @@ int lastSignal_R = -1;
 int path_signal = -1;
 //MOVEMENT VARIABLES
 //distance in mm
-int paths[7][3] = {{0,2000,0},{1,500,-90},{0,500,0},{1,1000,-270},{0,2000,0},{1,500,180},{0,3000,0}};
+float paths[7][3] = {{0,2000,0},{1,500,-1.57},{0,500,0},{1,1000,-4.71},{0,2000,0},{1,500,3.14},{0,3000,0}};
 int numberOf = 7;
 int current = 0;
 double left_output = 0;
@@ -46,9 +46,9 @@ volatile int encoderRightPosition = 0;
 
 float  DIAMETER  = 70.2;         // wheel diameter (in mm)
 float distanceLeftWheel, distanceRightWheel, deltaDistance=0, delta_theta_world=0, r_prev=0, l_prev=0;
- float  deltaRight =0.0; 
-  float  deltaLeft =0.0;
-  float theta_world_dot=0;
+float  deltaRight =0.0; 
+float  deltaLeft =0.0;
+float theta_world_dot=0;
 float   delta_angle_translate = 0.0;
 float theta_world_offset = 3.14;
 float delta_pwm_rotate=0;
@@ -177,17 +177,37 @@ void loop() {
 
           }
         }
-        //distance_ref theta_world_offset
-//        if(path_signal = -1){
-//            distance_ref = paths[current][1];
-//            theta_world_offset = paths[current][2];
-//            needed_distance += distance_ref;
-//            needed_theta = paths[current][2];  
-//        }
+        if(path_signal = -1){
+          if(paths[current][1] <= 100){
+             distance_ref = paths[current][1];
+          }else
+            distance_ref = 100;
+             theta_world_offset = paths[current][2];
+             needed_distance += paths[current][1];
+             needed_theta = paths[current][2];
+             path_signal = 1;  
+         }
+
        
         //rotate();
         //translate();
         pwm_Out();
+
+          //check if we have made it to the location(within 100mm and 5 degrees) 
+         //if so delay for 5 seconds
+         if( distance >= distance_ref){
+            if( (distance + 100) > needed_distance ){
+              distance_ref = needed_distance;
+            }else{
+              distance_ref += 100;  
+            }
+            
+          }
+         if(( needed_distance - 5 <= distance && distance <= needed_distance + 5 ) && (theta_world <= needed_theta + .17 && needed_theta - .17 <= theta_world) ){
+           current ++;
+           path_signal = -1;
+           delay(5000);  
+         }
 
 
 
