@@ -13,6 +13,8 @@ DualMC33926MotorShield md;
 #define PWM_L 9
 #define PWM_R 10
 
+#define arr_len( x )  ( sizeof( x ) / sizeof( *x ) )
+
 //IR pin definitions
 #define encoderPinAI  2
 #define encoderPinBI  3
@@ -25,8 +27,57 @@ int lastSignal_R = -1;
 int path_signal = -1;
 //MOVEMENT VARIABLES
 //distance in mm
-float paths[7][3] = {{0,2000,0},{1,500,-1.57},{0,500,0},{1,1000,-4.71},{0,2000,0},{1,500,3.14},{0,3000,0}};
-int numberOf = 7;
+
+float paths[][3] = {
+                      //circle path
+                      {1,30,5.50*3.141/8.00},{0,100,3.141},
+                      
+                      {1,30,5.70*3.141/8.00},{0,100,3.141},
+
+                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
+
+                      {1,100,6.75*3.141/8.00},{0,100,3.141},{0,100,3.141},
+
+                      {1,100,6.75*3.141/8.00},{0,100,3.141},{0,100,3.141},
+
+                      {1,100,7.0*3.141/8.00},{0,100,3.141},{0,100,3.141},{0,50,3.141},
+                      
+                      {1,100,7.0*3.141/8.00},{0,100,3.141},{0,100,3.141},
+
+                      {1,100,7.0*3.141/8.00},{0,100,3.141},{0,100,3.141},
+                      
+                      {0,100,3.141},{0,100,3.141},{0,100,3.141},
+
+                      {1,100,6.50*3.141/8.00},{0,100,3.141},
+
+                      {1,100,6.50*3.141/8.00},{0,70,3.141},
+
+                      {1,100,6.50*3.141/8.00},
+
+                      {1,100,6.00*3.141/8.00},
+
+                      {1,100,6.4*3.141/8.00},
+
+
+                      //back to staright line
+                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
+                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
+                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
+                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
+                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
+
+                      //second u turn path
+
+                      {1,80,11*3.141/8.00}, 
+                      {1,80,11*3.141/8.00}, 
+                      {1,80,10.8*3.141/8.00}, 
+                      
+                      }; 
+                      
+//8 turns
+int N = arr_len(paths);
+int straight_line_counter = 0;
+//float paths[1][3]=  {{1,0,3.00*3.14/4.00}};
 int current = 0;
 double left_output = 0;
 double right_output = 0;
@@ -37,7 +88,7 @@ float y_tracker = 0.0;
 float theta_tracker = 0.0;
 float end_time=0.0;
 float start_time = 0.0;
-float time_step=0.05;
+float time_step=0.0;
 
 //ODOMETRY VARIABLES
 //encoder trackers
@@ -50,37 +101,45 @@ float  deltaRight =0.0;
 float  deltaLeft =0.0;
 float theta_world_dot=0;
 float   delta_angle_translate = 0.0;
-float theta_world_offset = 3.14;
+
 float delta_pwm_rotate=0;
-float ENCODER_RESOLUTION = 40;      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION_LEFT = 32;//IMU SIDE      //encoder resolution (in pulses per revolution)
+float ENCODER_RESOLUTION_RIGHT = 32;
 
 float x = 0.0;           // x initial coordinate of mobile robot 
 float y = 0.0;           // y initial coordinate of mobile robot 
-float theta_world  = 0.0;       // The initial theta_world of mobile robot 
+float theta_world  = 3.141;       // The initial theta_world of mobile robot 
+float theta_world_offset =0.0;
+float last_theta_diff = 0.0;
+float last_theta_world = 3.141;
 float baseToWheel = 111.2;       //  the wheelbase of the mobile robot in mm
 float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=8;//18  //12
-float B=1.8;//2    //2
-float Kr=10;
-float Br=5;
-float Kt=0.001;
-float Bt=0.0001;
-float distance = 0;
-float distance_ref=0;
-float distance_dot;
-
-float theta_world_prev=0;
+float K=12;//12 
+float B=2.5;//1.8 
+float Kr=50;
+float Br=0;
+float Kt=0.005;
+float Bt=0.001;
+float distance = 0.0;
+float distance_stick = 0.0;
+float distance_ref=-100.0;
+float distance_dot=0.0;
+float distance_track=0.0;
+float theta_world_track=0.0;
+float last_distance = 0;
+float last_distance_diff = 0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .11;  //0.195
+float angle, angular_rate, angle_offset = .103;  //0.195  //0.09
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
-
-
-
+float theta_IMU = 0.0;
+float theta_dot_IMU=0.0;
+int path_count=-1;
+int last_straight_counter = 0;
 
 
 // ================================================================
@@ -115,13 +174,13 @@ void setup() {
     while (Serial.available() && Serial.read()); // empty buffer
 
     //set angles for non turning paths
-    for(int i=0; i<numberOf; i++){
-      if(i != 0){
-          if(paths[i][0] == 0){
-            paths[i][2] == paths[i-1][2];  
-          }
-      }  
-    }
+//    for(int i=0; i<numberOf; i++){
+//      if(i != 0){
+//          if(paths[i][0] == 0){
+//            paths[i][2] == paths[i-1][2];  
+//          }
+//      }  
+//    }
 
     //Pin stuff
     pinMode(PWM_L, OUTPUT);
@@ -143,6 +202,7 @@ void setup() {
     //delay 10 seconds
     //delay(10000);
     Serial.print("Done with setup");
+    end_time=millis();
 
 }
 
@@ -160,79 +220,110 @@ void loop() {
         //angle = atan2(ypr[0], ypr[2]) + (.084); 
         angle = atan2(ypr[0], ypr[2]);
         angular_rate = -(((float)gyro[1]/16.0)*(3.14/180.0));  //angular_rate = -((double)gyro[1]/131.0); // converted to radian
+        theta_dot_IMU=(((float)gyro[2]/16.0)*(3.14/180.0))-0.012;
+        if(theta_dot_IMU<0.015 and theta_dot_IMU>-0.015){
+          theta_dot_IMU=0;
+        }
+        //theta_IMU = theta_IMU + theta_dot_IMU;
+        
         if(angular_rate<0.01 and angular_rate>-0.01){
           angular_rate=0;
         }
 
-        char c;
-        if(Serial.available()> 1){
-          c = Serial.read();
-          switch(c){
-            case 'a':
-              angle_offset += 0.01;
-              break;
-            case 'd':
-              angle_offset -= 0.01;
-              break;
+   
+        //distance_ref theta_world_offset
+//        if(path_signal = -1){
+//            distance_ref = paths[current][1];
+//            theta_world_offset = paths[current][2];
+//            needed_distance += distance_ref;
+//            needed_theta = paths[current][2];  
+//        }
 
+       //Serial.println(theta_dot_IMU);
+        
+        
+        
+         if((end_time - start_time)>=50){
+          time_step = (end_time - start_time)/((float)1000.00);
+          last_distance_diff = -1*(last_distance - distance);
+          last_theta_diff = last_theta_world-theta_world;
+          start_time=end_time;
+          distance_dot=last_distance_diff / time_step;
+          theta_world_dot=-1*last_theta_diff/ time_step;
+          last_distance = distance;
+          last_theta_world = theta_world;
+          //Serial.print(theta_world);
+          //Serial.print("   ");
+          //Serial.println(theta_world,5);
+          //Serial.print(theta_dot_IMU);
+          //Serial.print("   ");
+          //Serial.println(delta_pwm_rotate);
+        }
+        
+        if(straight_line_counter < 20){
+           distance_ref = -100;
+           theta_world_offset = 3.141;
+
+           if(abs(distance_stick - distance_ref) < 10){
+            straight_line_counter=straight_line_counter+1;
+            distance_stick=0;
+          }
+          if(straight_line_counter == 19){
+            path_count = 0;
           }
         }
-        if(path_signal = -1){
-          if(paths[current][1] <= 100){
-             distance_ref = paths[current][1];
-          }else
-            distance_ref = 100;
-             theta_world_offset = paths[current][2];
-             needed_distance += paths[current][1];
-             needed_theta = paths[current][2];
-             path_signal = 1;  
-         }
+        else if(path_count<N && path_count != -1){
 
-       
-        //rotate();
-        //translate();
+          distance_ref=paths[path_count][1]*-1;
+          theta_world_offset=paths[path_count][2];
+                  
+          if(abs(distance_stick - distance_ref) < 10 && paths[path_count][0] == 0){
+            path_count=path_count+1;
+            distance_stick=0;
+           // theta_world=3.141;
+          }
+          else if(abs(theta_world_offset-theta_world) < 0.1 && paths[path_count][0] == 1){
+            path_count=path_count+1;
+            theta_world=3.141;
+            distance_stick=0;
+          }
+        }else if(path_count >= N && last_straight_counter < 30){
+            distance_ref = -100;
+            theta_world_offset = 3.141;
+
+           if(abs(distance_stick - distance_ref) < 10){
+            last_straight_counter=last_straight_counter+1;
+            distance_stick=0;
+            }
+        }else{
+          distance_ref=0;
+          distance_stick=0;
+        }
+        
+        rotate();
+        translate();    
         pwm_Out();
 
-          //check if we have made it to the location(within 100mm and 5 degrees) 
-         //if so delay for 5 seconds
-         if( distance >= distance_ref){
-            if( (distance + 100) > needed_distance ){
-              distance_ref = needed_distance;
-            }else{
-              distance_ref += 100;  
-            }
-            
-          }
-         if(( needed_distance - 5 <= distance && distance <= needed_distance + 5 ) && (theta_world <= needed_theta + .17 && needed_theta - .17 <= theta_world) ){
-           current ++;
-           path_signal = -1;
-           delay(5000);  
-         }
-
-
-
+        end_time = millis();
+        ;
 }
 
 void pwm_Out(){
   
-     //pwm += -K*( (angle_offset - delta_angle_translate) - angle) +B*(angular_rate);
-      pwm += K*(angle_offset+delta_angle_translate-angle) - B*(angular_rate); 
+
+      pwm += K*(angle_offset+delta_angle_translate - angle) - B*(angular_rate); 
     
-//     Serial.print(B*(angular_rate));
-//     Serial.print("  ");
-//     Serial.print(-K*( (angle_offset - delta_angle_translate) - angle));
-//     Serial.print("   ");
-//     Serial.println(pwm);
+
     //set max and min to 400 and -400 change value for next project to leave power for turning
-        if(pwm<-300){
-          pwm=-300;
+        if(pwm<-350){
+          pwm=-350;
         }
-        else if(pwm>300){
-          pwm=300;
+        else if(pwm>350){
+          pwm=350;
         }
         
-       pwm_l = pwm - delta_pwm_rotate;
-       pwm_r = pwm + delta_pwm_rotate;
+       pwm_l = pwm + delta_pwm_rotate;
+       pwm_r = pwm - delta_pwm_rotate;
        set_Motors(pwm_l, pwm_r);
 }
 
@@ -244,8 +335,7 @@ void set_Motors(int l_val, int r_val){
 
 //interupt method for first wheel
 void encoderA(){
-//  float end_time=start_time;
-//  start_time = micros();
+//
     if(digitalRead(encoderPinA) == lastSignal_R){
       return;
     }
@@ -253,38 +343,37 @@ void encoderA(){
   {   
     if (digitalRead(encoderPinA) == LOW) 
     {  
-      encoderLeftPosition = encoderLeftPosition + 1;
+      encoderLeftPosition = encoderLeftPosition - 1;
     } 
     else 
     {
-      encoderLeftPosition = encoderLeftPosition - 1;         
+      encoderLeftPosition = encoderLeftPosition + 1;         
     }
   }
   else                                        
   { 
     if (digitalRead(encoderPinA) == LOW) 
     {   
-      encoderLeftPosition = encoderLeftPosition - 1;          
+      encoderLeftPosition = encoderLeftPosition + 1;          
     } 
     else 
     {
-      encoderLeftPosition = encoderLeftPosition + 1;         
+      encoderLeftPosition = encoderLeftPosition - 1;         
     }
 
   }
 
     lastSignal_R = digitalRead(encoderPinA);  
-    //time_step=start_time-end_time;
-    update_Odometry();
-
+      update_Odometry();
+    //Serial.println(encoderLeftPosition);
+    //Serial.print(digitalRead(encoderPinA));
+    //Serial.println(digitalRead(encoderPinAI));
           
 }
 
 //interupt method for other wheel
 void encoderB(){
-//  float end_time=start_time;
-//  start_time = micros();
-//  
+
   if(digitalRead(encoderPinB) == lastSignal_L){
       return;
     }
@@ -312,30 +401,28 @@ void encoderB(){
     }
 
   }
-  lastSignal_L = digitalRead(encoderPinB); 
-  //Serial.println(encoderRightPosition);
-  //time_step=start_time-end_time;
+  lastSignal_L = digitalRead(encoderPinB);
    update_Odometry();
-
-   
+   //Serial.println(encoderRightPosition);
+   //Serial.print(digitalRead(encoderPinB));
+   //Serial.println(digitalRead(encoderPinBI));
 
 }
 
 //Calculate Odometry Values
 void update_Odometry(){
-
-  distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION);        //  travel distance for the left and right wheel respectively 
-  distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution )
+  distanceLeftWheel = CIRCUMFERENCE * (encoderLeftPosition / ENCODER_RESOLUTION_LEFT);        //  travel distance for the left and right wheel respectively 
+  distanceRightWheel = CIRCUMFERENCE * (encoderRightPosition / ENCODER_RESOLUTION_RIGHT);       // which equal to pi * diameter of wheel * (encoder counts / encoder resolution )
   deltaRight = distanceRightWheel - r_prev; 
   deltaLeft = distanceLeftWheel - l_prev;
   deltaDistance = (deltaRight + deltaLeft) / 2;
   distance = distance + deltaDistance;
+  distance_stick =  distance_stick + deltaDistance;
   delta_theta_world = atan2((deltaRight - deltaDistance), baseToWheel);
 
   //distance = atan2(distanceRightWheel-(distanceRightWheel+distanceLeftWheel)/2,baseToWheel);
   
-  theta_world_prev=theta_world;
-  theta_world = theta_world - delta_theta_world; //try mapping 0-5.5 rad to 0 - 2 PI
+  theta_world = theta_world + delta_theta_world; //try mapping 0-5.5 rad to 0 - 2 PI
   x = x + deltaDistance * cos(theta_world);
   y = y + deltaDistance * sin(theta_world); 
 
@@ -351,30 +438,29 @@ void update_Odometry(){
 
   r_prev = distanceRightWheel;
   l_prev = distanceLeftWheel;
-
-  
-  
-  
-
 }
 
 
 
 void rotate(){
-  theta_world_dot = (theta_world - theta_world_prev)/(time_step/1000000);
-  delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_world_dot);
+  delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_dot_IMU);
+  //delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_world_dot);
+  delta_pwm_rotate = constrain(delta_pwm_rotate,-50,50);
+  
 }
 
 void translate(){
-
-  delta_angle_translate = Kt*(distance_ref - distance) - Bt *(distance_dot);
-
   
-  if((delta_angle_translate)>0.05){
-    delta_angle_translate=0.05;
-  }
-  if (delta_angle_translate< -0.05){
-    delta_angle_translate= -0.05;
-  }
+  delta_angle_translate =  Kt*(distance_ref - distance_stick) - Bt *(distance_dot);
+//  Serial.print(distance_ref);
+//  Serial.print("   ");
+//  Serial.println(distance);
+ // Serial.print("   ");
+//  Serial.print(Kt*(distance_ref - distance));
+//  Serial.print("   ");
+//  Serial.println(-1*Bt *(distance_dot));
+  
+  delta_angle_translate = constrain(delta_angle_translate,-0.075,0.075);
+  
 }
 
