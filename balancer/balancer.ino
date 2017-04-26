@@ -242,9 +242,8 @@ void loop() {
           last_theta_world = theta_world;
         }
         
-        getPingData_F();
-        getPingData_R();
-        
+          getPingData_F();
+          getPingData_R();
 //        if(straight_line_counter < 20){
 //           distance_ref = -100;
 //           theta_world_offset = 3.141;
@@ -287,7 +286,7 @@ void loop() {
 //        
 //        rotate();
 //        translate();    
-//        pwm_Out();
+          pwm_Out();
 //
 //        end_time = millis();
 }
@@ -414,6 +413,8 @@ void update_Odometry(){
 
   r_prev = distanceRightWheel;
   l_prev = distanceLeftWheel;
+
+
 }
 
 
@@ -439,34 +440,34 @@ float microsecondsToCentimeters(float microseconds) {
 }
 
 void getPingData_F(){
-        float duration_F;
+        float duration_F = -1;
         pinMode(pingPin_F, OUTPUT);
         digitalWrite(pingPin_F, LOW);
-        delayMicroseconds(2);
         digitalWrite(pingPin_F, HIGH);
-        delayMicroseconds(5);
         digitalWrite(pingPin_F, LOW);
 
         pinMode(pingPin_F, INPUT);
-        duration_F = pulseIn(pingPin_F, HIGH);
-                
-        cm_F = microsecondsToCentimeters(duration_F);
-        Serial.print(cm_F);
-        Serial.print("   ");
+        duration_F = pulseIn(pingPin_F, HIGH, 1800);
+        if(duration_F >= 0){   
+          cm_F = microsecondsToCentimeters(duration_F);
+        }else{
+          cm_F = 0;  
+        }
 }
+
 void getPingData_R(){
-        float duration_R;
+        float duration_R = -1;
         pinMode(pingPin_R, OUTPUT);
         digitalWrite(pingPin_R, LOW);
-        delayMicroseconds(2);
         digitalWrite(pingPin_R, HIGH);
-        delayMicroseconds(5);
         digitalWrite(pingPin_R, LOW);
 
         pinMode(pingPin_R, INPUT);
-        duration_R = pulseIn(pingPin_R, HIGH);
-        
-        cm_R = microsecondsToCentimeters(duration_R);
-        Serial.println(cm_R);
+        duration_R = pulseIn(pingPin_R, HIGH, 1800);
+        if(duration_R >= 0){   
+          cm_R = microsecondsToCentimeters(duration_R);
+        }else{
+          cm_R = 0;  
+        }
 }
 
