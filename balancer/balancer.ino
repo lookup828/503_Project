@@ -22,8 +22,8 @@ DualMC33926MotorShield md;
 #define encoderPinB  6
 
 //PING pin def
-#define pingPin_F 7
-#define pingPin_R 8
+#define pingPin_F 1
+#define pingPin_R 11
 
 //Ping Vars
 float cm_F, cm_R;
@@ -116,7 +116,7 @@ float ENCODER_RESOLUTION_RIGHT = 32;
 float x = 0.0;           // x initial coordinate of mobile robot 
 float y = 0.0;           // y initial coordinate of mobile robot 
 float theta_world  = 3.141;       // The initial theta_world of mobile robot 
-float theta_world_offset =0.0;
+float theta_world_offset =3*3.141/2;
 float last_theta_diff = 0.0;
 float last_theta_world = 3.141;
 float baseToWheel = 111.2;       //  the wheelbase of the mobile robot in mm
@@ -140,7 +140,7 @@ float last_distance = 0;
 float last_distance_diff = 0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .103;  //0.195  //0.09
+float angle, angular_rate, angle_offset = .105;  //.103
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 float theta_IMU = 0.0;
@@ -284,7 +284,7 @@ void loop() {
 //          distance_stick=0;
 //        }
 //        
-//        rotate();
+        rotate();
 //        translate();    
           pwm_Out();
 //
