@@ -22,8 +22,9 @@ DualMC33926MotorShield md;
 #define encoderPinB  6
 
 //PING pin def
-#define pingPin_F 1
-#define pingPin_R 11
+#define pingPin_F 11
+#define pingPin_R 13
+
 
 //Ping Vars
 float cm_F, cm_R;
@@ -35,7 +36,7 @@ int path_signal = -1;
 //MOVEMENT VARIABLES
 //distance in mm
 
-float paths[][3] = {
+/*float paths[][3] = {
                       //circle path
                       {1,30,5.50*3.141/8.00},{0,100,3.141},
                       
@@ -79,12 +80,12 @@ float paths[][3] = {
                       {1,80,11*3.141/8.00}, 
                       {1,80,10.8*3.141/8.00}, 
                       
-                      }; 
+                      }; */
                       
 //8 turns
-int N = arr_len(paths);
+//int N = arr_len(paths);
 int straight_line_counter = 0;
-//float paths[1][3]=  {{1,0,3.00*3.14/4.00}};
+
 int current = 0;
 double left_output = 0;
 double right_output = 0;
@@ -116,7 +117,7 @@ float ENCODER_RESOLUTION_RIGHT = 32;
 float x = 0.0;           // x initial coordinate of mobile robot 
 float y = 0.0;           // y initial coordinate of mobile robot 
 float theta_world  = 3.141;       // The initial theta_world of mobile robot 
-float theta_world_offset =3*3.141/2;
+float theta_world_offset =3.141;
 float last_theta_diff = 0.0;
 float last_theta_world = 3.141;
 float baseToWheel = 111.2;       //  the wheelbase of the mobile robot in mm
@@ -124,15 +125,15 @@ float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=12;//12 
-float B=2.5;//1.8 
+float K=35;//12 
+float B=5;//2.5
 float Kr=50;
 float Br=0;
-float Kt=0.005;
-float Bt=0.001;
+float Kt=0.001; //0.005
+float Bt=0.0006; //0.001
 float distance = 0.0;
 float distance_stick = 0.0;
-float distance_ref=-100.0;
+float distance_ref=100.0;
 float distance_dot=0.0;
 float distance_track=0.0;
 float theta_world_track=0.0;
@@ -140,7 +141,7 @@ float last_distance = 0;
 float last_distance_diff = 0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .105;  //.103
+float angle, angular_rate, angle_offset = .008;  //0445
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 float theta_IMU = 0.0;
@@ -241,54 +242,39 @@ void loop() {
           last_distance = distance;
           last_theta_world = theta_world;
         }
+
+         
+        //getPingData_R();
+        getPingData_F();
+        //Serial.print("distance_stick     ");
+        //Serial.println(distance_stick);
+        //Serial.print("distance_ref     ");
+        //Serial.println(distance_ref);
+        //Serial.println(cm_F);
         
-          getPingData_F();
-          getPingData_R();
-//        if(straight_line_counter < 20){
-//           distance_ref = -100;
-//           theta_world_offset = 3.141;
-//
-//           if(abs(distance_stick - distance_ref) < 10){
-//            straight_line_counter=straight_line_counter+1;
-//            distance_stick=0;
-//          }
-//          if(straight_line_counter == 19){
-//            path_count = 0;
-//          }
-//        }
-//        else if(path_count<N && path_count != -1){
-//
-//          distance_ref=paths[path_count][1]*-1;
-//          theta_world_offset=paths[path_count][2];
-//                  
-//          if(abs(distance_stick - distance_ref) < 10 && paths[path_count][0] == 0){
-//            path_count=path_count+1;
-//            distance_stick=0;
-//           // theta_world=3.141;
-//          }
-//          else if(abs(theta_world_offset-theta_world) < 0.1 && paths[path_count][0] == 1){
-//            path_count=path_count+1;
-//            theta_world=3.141;
-//            distance_stick=0;
-//          }
-//        }else if(path_count >= N && last_straight_counter < 30){
-//            distance_ref = -100;
-//            theta_world_offset = 3.141;
-//
-//           if(abs(distance_stick - distance_ref) < 10){
-//            last_straight_counter=last_straight_counter+1;
-//            distance_stick=0;
-//            }
-//        }else{
-//          distance_ref=0;
-//          distance_stick=0;
-//        }
-//        
+        if(distance_stick/distance_ref > 0.98 && distance_ref != 0)
+        {
+          distance_stick = 0;
+          if(cm_F == 0 or cm_F > 25)
+          {
+            
+            distance_ref = 100;
+          }else if (cm_F < 15){
+            
+            distance_ref = 0;
+          }
+          else
+          {
+            
+            distance_ref = (cm_F - 15)*10;
+          }
+        } 
+        
+        
         rotate();
-//        translate();    
-          pwm_Out();
-//
-//        end_time = millis();
+        translate();    
+        pwm_Out();
+        end_time = millis();
 }
 
 void pwm_Out(){
@@ -345,8 +331,8 @@ void encoderA(){
   }
 
     lastSignal_R = digitalRead(encoderPinA);  
-      update_Odometry();
-    //Serial.println(encoderLeftPosition);
+    update_Odometry();
+    //Serial.println(x);
           
 }
 
@@ -381,8 +367,8 @@ void encoderB(){
 
   }
   lastSignal_L = digitalRead(encoderPinB);
-   update_Odometry();
-   //Serial.println(encoderRightPosition);
+  update_Odometry();
+  //Serial.println(x);
 }
 
 //Calculate Odometry Values
@@ -443,11 +429,13 @@ void getPingData_F(){
         float duration_F = -1;
         pinMode(pingPin_F, OUTPUT);
         digitalWrite(pingPin_F, LOW);
+        delayMicroseconds(2);
         digitalWrite(pingPin_F, HIGH);
+        delayMicroseconds(5);
         digitalWrite(pingPin_F, LOW);
 
         pinMode(pingPin_F, INPUT);
-        duration_F = pulseIn(pingPin_F, HIGH, 1800);
+        duration_F = pulseIn(pingPin_F, HIGH,6000);
         if(duration_F >= 0){   
           cm_F = microsecondsToCentimeters(duration_F);
         }else{
@@ -459,11 +447,13 @@ void getPingData_R(){
         float duration_R = -1;
         pinMode(pingPin_R, OUTPUT);
         digitalWrite(pingPin_R, LOW);
+        delayMicroseconds(2);
         digitalWrite(pingPin_R, HIGH);
+        delayMicroseconds(5);
         digitalWrite(pingPin_R, LOW);
 
         pinMode(pingPin_R, INPUT);
-        duration_R = pulseIn(pingPin_R, HIGH, 1800);
+        duration_R = pulseIn(pingPin_R, HIGH, 3500);
         if(duration_R >= 0){   
           cm_R = microsecondsToCentimeters(duration_R);
         }else{
