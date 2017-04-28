@@ -49,7 +49,7 @@ int lastSignal_R = -1;
 //NEED TO HARD CODE 90 DEGREE RIGHT AND 180 DEGREE TURNS
 int current = -1;
 int path_length = -1;
-float right_path[]= {-3.141/2};
+float right_path[][2]= {{100,0},{50,-3.141/2},{200,0}};
 float left_path[] = {3.141/2};
 float turn_around[] = {3.141};
 
@@ -459,7 +459,7 @@ void getPingData_R(){
  int setRobotState(){
     if( maze_state == 11 && cm_F <= 20.0){
       
-      return turn_Around;
+      return traversal;
       
     }else if(maze_state == 10){
       
@@ -524,21 +524,26 @@ void getPingData_R(){
     if(current == -1){
       current = 0;
       path_length = arr_len(right_path);
-      theta_world_offset = theta_world + right_path[current];
+      theta_world_offset = theta_world + right_path[current][1];
+      distance_stick = 0;
+      distance_ref = right_path[current][0];
     }
     
     //if we have turned correctly switch back to traversal
-    if( abs(theta_world_offset - theta_world) < 0.1 ){
-     if(current >= path_length ){
-       robot_state = traversal;
-       theta_world_offset = 3.141;
-       theta_world = 3.141;
-       current = -1; 
-     }else{
-        current = current +1;
-        theta_world_offset = right_path[current]; 
-     }
-    }    
+    if((distance_stick - distance_ref) < 10){
+      if( abs(theta_world_offset - theta_world) < 0.1 ){
+       if(current >= path_length ){
+         robot_state = traversal;
+         current = -1; 
+       }
+       else{
+          current = current +1;
+          theta_world_offset = theta_world + right_path[current][1];
+          distance_stick = 0;
+          distance_ref = right_path[current][0]; 
+       }
+      } 
+    }   
   };
 
   void forward(){
