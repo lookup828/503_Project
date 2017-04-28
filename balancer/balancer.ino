@@ -25,6 +25,16 @@ DualMC33926MotorShield md;
 #define pingPin_F 11
 #define pingPin_R 13
 
+#define traversal 0
+#define turn_Right 1
+#define turn_Left 2
+#define turn_Around 3
+#define find_Wall 4
+
+
+//MAZE TRAVERSAL Vars
+int maze_state = 00; //FOUR STATES: 11, 10, 01, 00 BIT ONE IS FRONT PING, BIT 2 IS RIGHT PING
+int robot_state = traversal;
 
 //Ping Vars
 float cm_F, cm_R;
@@ -32,9 +42,16 @@ float cm_F, cm_R;
 //error for pin
 int lastSignal_L = -1;
 int lastSignal_R = -1;
-int path_signal = -1;
+
 //MOVEMENT VARIABLES
 //distance in mm
+
+//NEED TO HARD CODE 90 DEGREE RIGHT AND 180 DEGREE TURNS
+int current = -1;
+int path_length = -1;
+float right_path[]= {-3.141/2};
+float left_path[] = {3.141/2};
+float turn_around[] = {3.141};
 
 /*float paths[][3] = {
                       //circle path
@@ -86,7 +103,6 @@ int path_signal = -1;
 //int N = arr_len(paths);
 int straight_line_counter = 0;
 
-int current = 0;
 double left_output = 0;
 double right_output = 0;
 double scalar;
@@ -243,36 +259,11 @@ void loop() {
           last_theta_world = theta_world;
         }
 
-         
-        //getPingData_R();
+        //gets the ping values and sets the state of the robot
         getPingData_F();
-        //Serial.print("distance_stick     ");
-        //Serial.println(distance_stick);
-        //Serial.print("distance_ref     ");
-        //Serial.println(distance_ref);
-        //Serial.println(cm_F);
-        
-        if(distance_stick/distance_ref > 0.98 && distance_ref != 0)
-        {
-          distance_stick = 0;
-          if(cm_F == 0 or cm_F > 25)
-          {
-            
-            distance_ref = 100;
-          }else if (cm_F < 15){
-            
-            distance_ref = 0;
-          }
-          else
-          {
-            
-            distance_ref = (cm_F - 15)*10;
-          }
-        } 
-        
-        
-        rotate();
-        translate();    
+        getPingData_R();
+        set_Bot();
+        move_Bot();    
         pwm_Out();
         end_time = millis();
 }
@@ -435,12 +426,15 @@ void getPingData_F(){
         digitalWrite(pingPin_F, LOW);
 
         pinMode(pingPin_F, INPUT);
-        duration_F = pulseIn(pingPin_F, HIGH,6000);
-        if(duration_F >= 0){   
+        duration_F = pulseIn(pingPin_F, HIGH,4500);
+        if(duration_F > 0){   
           cm_F = microsecondsToCentimeters(duration_F);
+          maze_state = 10;
         }else{
-          cm_F = 0;  
+          cm_F = -1;  
+          maze_state = 0;
         }
+
 }
 
 void getPingData_R(){
@@ -453,11 +447,103 @@ void getPingData_R(){
         digitalWrite(pingPin_R, LOW);
 
         pinMode(pingPin_R, INPUT);
-        duration_R = pulseIn(pingPin_R, HIGH, 3500);
-        if(duration_R >= 0){   
+        duration_R = pulseIn(pingPin_R, HIGH, 3000);
+        if(duration_R > 0){   
           cm_R = microsecondsToCentimeters(duration_R);
+          maze_state = maze_state + 1;
         }else{
-          cm_R = 0;  
+          cm_R = -1;  
         }
-}
+ }
+
+ int setRobotState(){
+    if( maze_state == 11 && cm_F <= 20.0){
+      
+      return turn_Around;
+      
+    }else if(maze_state == 10){
+      
+        return turn_Right;
+      
+    }else if(maze_state == 01){
+      
+      return traversal;
+    
+    }else if(maze_state == 00){
+
+        return turn_Right;
+      
+    }
+    return traversal;
+  }
+
+  void move_Bot(){
+        rotate();
+        translate();
+  }
+
+  void set_Bot(){
+    int state = setRobotState();
+    //Serial.println(state);  
+    if(robot_state == traversal){
+      robot_state = state;  
+    }
+    if(robot_state == turn_Around){
+      rotate_180();  
+    }else if(robot_state == turn_Right){
+      rotate_90R();  
+    }else{
+      forward();  
+    }
+  }
+
+  void rotate_180(){
+    //straight up 180 degree turn
+    if(current == -1){
+      current = 0;
+      path_length = arr_len(turn_around);
+      theta_world_offset = turn_around[current];
+    }
+      
+    //if we have turned correctly move to next rotate point, or switch back to traversal
+    if( abs(theta_world_offset - theta_world) < 0.1 ){
+     if(current >= path_length ){
+       robot_state = traversal;
+       theta_world_offset = 3.141;
+       theta_world = 3.141;
+       current = -1; 
+     }else{
+        current = current +1;
+        theta_world_offset = turn_around[current]; 
+     }
+    }  
+  };
+
+  void rotate_90R(){
+    //forward a few centimeters then 90 degree turn
+    if(current == -1){
+      current = 0;
+      path_length = arr_len(right_path);
+      theta_world_offset = theta_world + right_path[current];
+    }
+    
+    //if we have turned correctly switch back to traversal
+    if( abs(theta_world_offset - theta_world) < 0.1 ){
+     if(current >= path_length ){
+       robot_state = traversal;
+       theta_world_offset = 3.141;
+       theta_world = 3.141;
+       current = -1; 
+     }else{
+        current = current +1;
+        theta_world_offset = right_path[current]; 
+     }
+    }    
+  };
+
+  void forward(){
+      distance_stick = 0;
+      distance_ref = 100;
+  
+  }
 
