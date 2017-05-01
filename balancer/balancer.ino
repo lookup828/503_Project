@@ -35,6 +35,7 @@ DualMC33926MotorShield md;
 //MAZE TRAVERSAL Vars
 int maze_state = 00; //FOUR STATES: 11, 10, 01, 00 BIT ONE IS FRONT PING, BIT 2 IS RIGHT PING
 int robot_state = traversal;
+int state_buffer[5] = {0,0,0,0,0};
 
 //Ping Vars
 float cm_F, cm_R;
@@ -486,8 +487,10 @@ void getPingData_R(){
   }
 
   void set_Bot(){
+    
     int state = setRobotState();
-    //Serial.println(state);  
+    state = buffer_helper(state);
+      
     if(robot_state == traversal){
       robot_state = state;  
     }
@@ -504,6 +507,23 @@ void getPingData_R(){
     }
   }
 
+  int buffer_Helper(int state){
+     int state_total = 0;
+     for(int j =0; j<4; j++){
+       state_buffer[j] = state_buffer[j+1];
+       state_total = state_total + stat_buffer[j];  
+     }
+     state_buffer[4] = state;
+     state_total = state_total + state;
+     if(state_total == 5){
+       return turn_Right;  
+     }else if(state_total == 10){
+       return turn_Left;
+     } else{
+       return traversal;  
+     }
+  }
+   
   void rotate_180(){
     //straight up 180 degree turn
     if(current == -1){
@@ -558,6 +578,7 @@ void getPingData_R(){
         
          if(current >= path_length-1 ){
            robot_state = traversal;
+           state_buffer = {0,0,0,0,0};
            current = -1; 
          }
          else{
@@ -589,6 +610,7 @@ void getPingData_R(){
       if( abs(theta_world_offset/theta_world) > 0.95 ){
        if(current >= path_length ){
          robot_state = traversal;
+         state_buffer = {0,0,0,0,0};
          current = -1; 
          digitalWrite(A2,LOW);
        }
