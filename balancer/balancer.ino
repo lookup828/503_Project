@@ -35,7 +35,7 @@ DualMC33926MotorShield md;
 //MAZE TRAVERSAL Vars
 int maze_state = 00; //FOUR STATES: 11, 10, 01, 00 BIT ONE IS FRONT PING, BIT 2 IS RIGHT PING
 int robot_state = traversal;
-int state_buffer[5] = {0,0,0,0,0};
+int state_buffer[3] = {0,0,0};
 
 //Ping Vars
 float cm_F, cm_R;
@@ -50,8 +50,8 @@ int lastSignal_R = -1;
 //NEED TO HARD CODE 90 DEGREE RIGHT AND 180 DEGREE TURNS
 int current = -1;
 int path_length = -1;
-float right_path[][2]= {{35,0},{0,-3.141/2},{100,0}};
-float left_path[][2] = {{0,3.141/2},{100,0}};
+float right_path[][2]= {{0,-3.141/2},{25,0}};
+float left_path[][2] = {{0,3.141/2},{25,0}};
 float turn_around[] = {3.141};
 
 /*float paths[][3] = {
@@ -146,7 +146,7 @@ float K=40;//30
 float B=7;//5
 float Kr=50;
 float Br=0;
-float Kt=0.001; //0.005
+float Kt=0.00125; //0.005
 float Bt=0.00015; //0.001
 float distance = 0.0;
 float distance_stick = 0.0;
@@ -401,7 +401,11 @@ void update_Odometry(){
 
 
 void rotate(){
-  delta_pwm_rotate = Kr*(theta_world_offset - theta_world) - Br *(theta_dot_IMU);
+  float theta_diff = theta_world_offset - theta_world;
+  if(theta_diff > PI){
+    theta_diff = 2*PI-theta_diff;
+  }
+  delta_pwm_rotate = Kr*(theta_diff) - Br *(theta_dot_IMU);
   delta_pwm_rotate = constrain(delta_pwm_rotate,-50,50);
   
 }
@@ -461,7 +465,7 @@ void getPingData_R(){
  }
 
  int setRobotState(){
-    if( maze_state == 11 && cm_F <= 15){
+    if( maze_state == 11 && cm_F <= 25){
       
       return turn_Left;
       
@@ -489,11 +493,11 @@ void getPingData_R(){
   void set_Bot(){
     
     int state = setRobotState();
-    state = buffer_helper(state);
-      
+    state = buffer_Helper(state);
     if(robot_state == traversal){
       robot_state = state;  
     }
+    Serial.println(robot_state);
     if(robot_state == turn_Around){
       forward();  
     }else if(robot_state == turn_Right){
@@ -509,15 +513,15 @@ void getPingData_R(){
 
   int buffer_Helper(int state){
      int state_total = 0;
-     for(int j =0; j<4; j++){
+     for(int j =0; j<2; j++){
        state_buffer[j] = state_buffer[j+1];
-       state_total = state_total + stat_buffer[j];  
+       state_total = state_total + state_buffer[j];  
      }
-     state_buffer[4] = state;
+     state_buffer[2] = state;
      state_total = state_total + state;
-     if(state_total == 5){
+     if(state_total == 3){
        return turn_Right;  
-     }else if(state_total == 10){
+     }else if(state_total == 6){
        return turn_Left;
      } else{
        return traversal;  
@@ -550,17 +554,28 @@ void getPingData_R(){
     //forward a few centimeters then 90 degree turn
     if(current == -1){
       current = 0;
+      digitalWrite(A2,HIGH);
       path_length = arr_len(right_path);
       theta_world_offset = theta_world + right_path[current][1];
       distance_stick = 0;
-      distance_ref = right_path[current][0];
+      if(right_path[current][0]==0){
+        distance_ref = 18.75652;
+      }
+      else{
+        distance_ref = right_path[current][0];
+      }
+      
     }
 
-    if(distance_ref==0){//means we are only turning no translate
-      if( abs(theta_world_offset/theta_world) > 0.95 ){
-       if(current >= path_length ){
+    if(right_path[current][0]==0){//means we are only turning no translate
+      if( abs(theta_world_offset/theta_world) > 0.95 && abs(theta_world_offset/theta_world) < 1.05){
+       if(current >= path_length){
          robot_state = traversal;
-         current = -1; 
+         for(int j =0; j<3;j++){
+          state_buffer[j] = 0; 
+         }
+         current = -1;
+         digitalWrite(A2,LOW); 
        }
        else{
           current = current +1;
@@ -573,13 +588,16 @@ void getPingData_R(){
 
     
     //translation parts
-    if(distance_ref>0){
-      if((distance_stick/distance_ref) > 0.95){
+    if(right_path[current][0]>0){
+      if((distance_stick/distance_ref) > 0.95 && (distance_stick/distance_ref)<1.05){
         
-         if(current >= path_length-1 ){
+         if(current >= path_length){
            robot_state = traversal;
-           state_buffer = {0,0,0,0,0};
+           for(int j =0; j<3;j++){
+            state_buffer[j] = 0; 
+           }
            current = -1; 
+           digitalWrite(A2,LOW);
          }
          else{
             current = current +1;
@@ -598,19 +616,25 @@ void getPingData_R(){
     if(current == -1){
       digitalWrite(A2,HIGH);
       current = 0;
-      path_length = arr_len(right_path);
+      path_length = arr_len(left_path);
       theta_world_offset = theta_world + left_path[current][1];
       distance_stick = 0;
-      distance_ref = left_path[current][0];
-      
+      if(left_path[current][0]==0){
+        distance_ref = 18.75652;
+      }
+      else{
+        distance_ref = left_path[current][0];
+      }      
     }
 
       
-    if(distance_ref==0){//means we are only turning no translate
-      if( abs(theta_world_offset/theta_world) > 0.95 ){
+    if(left_path[current][0]==0){//means we are only turning no translate
+      if( abs(theta_world_offset/theta_world) > 0.95 && abs(theta_world_offset/theta_world) < 1.05){
        if(current >= path_length ){
          robot_state = traversal;
-         state_buffer = {0,0,0,0,0};
+         for(int j =0; j<3;j++){
+          state_buffer[j] = 0; 
+         }
          current = -1; 
          digitalWrite(A2,LOW);
        }
@@ -625,12 +649,15 @@ void getPingData_R(){
 
     
     //translation part
-    if(distance_ref>0){
-      if((distance_stick/distance_ref) > 0.95){
+    if(left_path[current][0]>0){
+      if((distance_stick/distance_ref) > 0.95 && (distance_stick/distance_ref)<1.05){
         
-         if(current >= path_length-1 ){
+         if(current >= path_length){
            robot_state = traversal;
-           current = -1; 
+           current = -1;
+           for(int j =0; j<3;j++){
+            state_buffer[j] = 0; 
+           } 
             digitalWrite(A2,LOW);
          }
          else{
@@ -647,7 +674,7 @@ void getPingData_R(){
 
   void forward(){
       distance_stick = 0;
-      distance_ref = 100;
+      distance_ref = 40;
   
   }
 
