@@ -49,8 +49,8 @@ int lastSignal_R = -1;
 //NEED TO HARD CODE 90 DEGREE RIGHT AND 180 DEGREE TURNS
 int current = -1;
 int path_length = -1;
-float right_path[][2]= {{100,0},{50,-3.141/2},{200,0}};
-float left_path[] = {3.141/2};
+float right_path[][2]= {{35,0},{0,-3.141/2},{100,0}};
+float left_path[][2] = {{0,3.141/2},{100,0}};
 float turn_around[] = {3.141};
 
 /*float paths[][3] = {
@@ -141,12 +141,12 @@ float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=35;//12 
-float B=5;//2.5
+float K=40;//30 
+float B=7;//5
 float Kr=50;
 float Br=0;
 float Kt=0.001; //0.005
-float Bt=0.0006; //0.001
+float Bt=0.00015; //0.001
 float distance = 0.0;
 float distance_stick = 0.0;
 float distance_ref=100.0;
@@ -211,6 +211,9 @@ void setup() {
     digitalWrite(encoderPinBI, HIGH);       // turn on pull-up resistor
     pinMode(encoderPinB, INPUT); 
     digitalWrite(encoderPinB, HIGH);       // turn on pull-up resistor
+
+    pinMode(A2,OUTPUT);
+    digitalWrite(A2,LOW);
 
     attachInterrupt(0, encoderA, CHANGE);//Bind interupt pin2
     attachInterrupt(1, encoderB, CHANGE);//Bind interupt pin3
@@ -457,9 +460,9 @@ void getPingData_R(){
  }
 
  int setRobotState(){
-    if( maze_state == 11 && cm_F <= 20.0){
+    if( maze_state == 11 && cm_F <= 15){
       
-      return traversal;
+      return turn_Left;
       
     }else if(maze_state == 10){
       
@@ -489,10 +492,14 @@ void getPingData_R(){
       robot_state = state;  
     }
     if(robot_state == turn_Around){
-      rotate_180();  
+      forward();  
     }else if(robot_state == turn_Right){
       rotate_90R();  
-    }else{
+    }
+    else if(robot_state==turn_Left){
+      rotate_90L();
+    }
+    else{
       forward();  
     }
   }
@@ -528,10 +535,9 @@ void getPingData_R(){
       distance_stick = 0;
       distance_ref = right_path[current][0];
     }
-    
-    //if we have turned correctly switch back to traversal
-    if((distance_stick - distance_ref) < 10){
-      if( abs(theta_world_offset - theta_world) < 0.1 ){
+
+    if(distance_ref==0){//means we are only turning no translate
+      if( abs(theta_world_offset/theta_world) > 0.95 ){
        if(current >= path_length ){
          robot_state = traversal;
          current = -1; 
@@ -542,9 +548,80 @@ void getPingData_R(){
           distance_stick = 0;
           distance_ref = right_path[current][0]; 
        }
-      } 
-    }   
-  };
+      }
+    }
+
+    
+    //translation parts
+    if(distance_ref>0){
+      if((distance_stick/distance_ref) > 0.95){
+        
+         if(current >= path_length-1 ){
+           robot_state = traversal;
+           current = -1; 
+         }
+         else{
+            current = current +1;
+            theta_world_offset = theta_world + right_path[current][1];
+            distance_stick = 0;
+            distance_ref = right_path[current][0]; 
+         }
+        } 
+      
+    }  
+
+    }
+
+  void rotate_90L(){
+    //forward a few centimeters then 90 degree turn
+    if(current == -1){
+      digitalWrite(A2,HIGH);
+      current = 0;
+      path_length = arr_len(right_path);
+      theta_world_offset = theta_world + left_path[current][1];
+      distance_stick = 0;
+      distance_ref = left_path[current][0];
+      
+    }
+
+      
+    if(distance_ref==0){//means we are only turning no translate
+      if( abs(theta_world_offset/theta_world) > 0.95 ){
+       if(current >= path_length ){
+         robot_state = traversal;
+         current = -1; 
+         digitalWrite(A2,LOW);
+       }
+       else{
+          current = current +1;
+          theta_world_offset = theta_world + left_path[current][1];
+          distance_stick = 0;
+          distance_ref = left_path[current][0]; 
+       }
+      }
+    }
+
+    
+    //translation part
+    if(distance_ref>0){
+      if((distance_stick/distance_ref) > 0.95){
+        
+         if(current >= path_length-1 ){
+           robot_state = traversal;
+           current = -1; 
+            digitalWrite(A2,LOW);
+         }
+         else{
+            current = current +1;
+            theta_world_offset = theta_world + left_path[current][1];
+            distance_stick = 0;
+            distance_ref = left_path[current][0]; 
+         }
+        } 
+ 
+
+  }
+  }
 
   void forward(){
       distance_stick = 0;
