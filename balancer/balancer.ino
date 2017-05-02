@@ -50,7 +50,7 @@ int lastSignal_R = -1;
 //NEED TO HARD CODE 90 DEGREE RIGHT AND 180 DEGREE TURNS
 int current = -1;
 int path_length = -1;
-float right_path[][2]= {{0,-3.141/2},{25,0}};
+float right_path[][3]= {{0,-3.141/2},{25,0}};
 float left_path[][2] = {{0,3.141/2},{25,0}};
 float turn_around[] = {3.141};
 
@@ -146,8 +146,8 @@ float K=40;//30
 float B=7;//5
 float Kr=50;
 float Br=0;
-float Kt=0.00125; //0.005
-float Bt=0.00015; //0.001
+float Kt=0.00125; //0.00125
+float Bt=0.00015; //0.00015
 float distance = 0.0;
 float distance_stick = 0.0;
 float distance_ref=100.0;
@@ -403,7 +403,10 @@ void update_Odometry(){
 void rotate(){
   float theta_diff = theta_world_offset - theta_world;
   if(theta_diff > PI){
-    theta_diff = 2*PI-theta_diff;
+    theta_diff = -2*PI+theta_diff;
+  }
+  if(theta_diff < -PI){
+    theta_diff = 2*PI+theta_diff;
   }
   delta_pwm_rotate = Kr*(theta_diff) - Br *(theta_dot_IMU);
   delta_pwm_rotate = constrain(delta_pwm_rotate,-50,50);
@@ -465,7 +468,7 @@ void getPingData_R(){
  }
 
  int setRobotState(){
-    if( maze_state == 11 && cm_F <= 25){
+    if( maze_state == 11 && cm_F <= 20){
       
       return turn_Left;
       
@@ -497,7 +500,6 @@ void getPingData_R(){
     if(robot_state == traversal){
       robot_state = state;  
     }
-    Serial.println(robot_state);
     if(robot_state == turn_Around){
       forward();  
     }else if(robot_state == turn_Right){
@@ -559,7 +561,7 @@ void getPingData_R(){
       theta_world_offset = theta_world + right_path[current][1];
       distance_stick = 0;
       if(right_path[current][0]==0){
-        distance_ref = 18.75652;
+        distance_ref = 0;
       }
       else{
         distance_ref = right_path[current][0];
@@ -620,7 +622,7 @@ void getPingData_R(){
       theta_world_offset = theta_world + left_path[current][1];
       distance_stick = 0;
       if(left_path[current][0]==0){
-        distance_ref = 18.75652;
+        distance_ref = 0;
       }
       else{
         distance_ref = left_path[current][0];
@@ -674,7 +676,14 @@ void getPingData_R(){
 
   void forward(){
       distance_stick = 0;
-      distance_ref = 40;
+      distance_ref = 25;
+      if(cm_R > 11.0){
+        theta_world_offset = theta_world - (3.14/64.0);
+      }else if(cm_R < 9.0){
+        theta_world_offset = theta_world + (3.14/64.0);
+      }else{
+        theta_world_offset = theta_world;  
+      }
   
   }
 
