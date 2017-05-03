@@ -35,7 +35,7 @@ DualMC33926MotorShield md;
 //MAZE TRAVERSAL Vars
 int maze_state = 00; //FOUR STATES: 11, 10, 01, 00 BIT ONE IS FRONT PING, BIT 2 IS RIGHT PING
 int robot_state = traversal;
-int state_buffer[3] = {0,0,0};
+int state_buffer[50] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 
 //Ping Vars
 float cm_F, cm_R;
@@ -50,58 +50,10 @@ int lastSignal_R = -1;
 //NEED TO HARD CODE 90 DEGREE RIGHT AND 180 DEGREE TURNS
 int current = -1;
 int path_length = -1;
-float right_path[][3]= {{0,-3.141/2},{25,0}};
-float left_path[][2] = {{0,3.141/2},{25,0}};
+float right_path[][3]= {{0,-3.141/2}, {2, 0} };
+float left_path[][2] = {{0,(3.141/2)+(3.141/16)}, {10, 0} };
 float turn_around[] = {3.141};
 
-/*float paths[][3] = {
-                      //circle path
-                      {1,30,5.50*3.141/8.00},{0,100,3.141},
-                      
-                      {1,30,5.70*3.141/8.00},{0,100,3.141},
-
-                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
-
-                      {1,100,6.75*3.141/8.00},{0,100,3.141},{0,100,3.141},
-
-                      {1,100,6.75*3.141/8.00},{0,100,3.141},{0,100,3.141},
-
-                      {1,100,7.0*3.141/8.00},{0,100,3.141},{0,100,3.141},{0,50,3.141},
-                      
-                      {1,100,7.0*3.141/8.00},{0,100,3.141},{0,100,3.141},
-
-                      {1,100,7.0*3.141/8.00},{0,100,3.141},{0,100,3.141},
-                      
-                      {0,100,3.141},{0,100,3.141},{0,100,3.141},
-
-                      {1,100,6.50*3.141/8.00},{0,100,3.141},
-
-                      {1,100,6.50*3.141/8.00},{0,70,3.141},
-
-                      {1,100,6.50*3.141/8.00},
-
-                      {1,100,6.00*3.141/8.00},
-
-                      {1,100,6.4*3.141/8.00},
-
-
-                      //back to staright line
-                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
-                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
-                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
-                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
-                      {0,100,3.141},{0,100,3.141},{0,100,3.141},{0,100,3.141},
-
-                      //second u turn path
-
-                      {1,80,11*3.141/8.00}, 
-                      {1,80,11*3.141/8.00}, 
-                      {1,80,10.8*3.141/8.00}, 
-                      
-                      }; */
-                      
-//8 turns
-//int N = arr_len(paths);
 int straight_line_counter = 0;
 
 double left_output = 0;
@@ -142,12 +94,12 @@ float CIRCUMFERENCE =PI * DIAMETER;
 float Dl, Dr, avg_dist, theta;
 
 //BALANCING VARIABLES
-float K=40;//30 
-float B=7;//5
-float Kr=50;
-float Br=0;
-float Kt=0.00125; //0.00125
-float Bt=0.00015; //0.00015
+float K=15;//30 
+float B=3.5;//5
+float Kr = 50;
+float Br= 25;
+float Kt= 0.0005;
+float Bt= 0.00025 ;
 float distance = 0.0;
 float distance_stick = 0.0;
 float distance_ref=100.0;
@@ -158,7 +110,7 @@ float last_distance = 0;
 float last_distance_diff = 0;
 int pwm,pwm_l,pwm_r;
 int i =0;
-float angle, angular_rate, angle_offset = .008;  //0445
+float angle, angular_rate, angle_offset = 0.00;  //0445
 int16_t gyro[3];        // [x, y, z]            gyro vector
 int16_t ypr[3];           // [yaw, pitch, roll]   yaw/pitch/roll container and gravity vector
 float theta_IMU = 0.0;
@@ -277,15 +229,15 @@ void pwm_Out(){
       pwm += K*(angle_offset+delta_angle_translate - angle) - B*(angular_rate); 
 
     //set max and min to 400 and -400 change value for next project to leave power for turning
-        if(pwm<-350){
-          pwm=-350;
+        if(pwm<-300){
+          pwm=-300;
         }
-        else if(pwm>350){
-          pwm=350;
+        else if(pwm>300){
+          pwm=300;
         }
         
-       pwm_l = pwm + delta_pwm_rotate;
-       pwm_r = pwm - delta_pwm_rotate;
+       pwm_l = pwm + (1.5 * delta_pwm_rotate);
+       pwm_r = pwm - (1.5 * delta_pwm_rotate);
        set_Motors(pwm_l, pwm_r);
 }
 
@@ -461,14 +413,14 @@ void getPingData_R(){
         duration_R = pulseIn(pingPin_R, HIGH, 3000);
         if(duration_R > 0){   
           cm_R = microsecondsToCentimeters(duration_R);
-          maze_state = maze_state + 1;
+          maze_state = maze_state + 1; 
         }else{
           cm_R = -1;  
         }
  }
 
  int setRobotState(){
-    if( maze_state == 11 && cm_F <= 20){
+    if( maze_state == 11 && cm_F <= 30){
       
       return turn_Left;
       
@@ -500,6 +452,11 @@ void getPingData_R(){
     if(robot_state == traversal){
       robot_state = state;  
     }
+//    Serial.print(cm_F);
+//    Serial.print("   ");
+//    Serial.print(cm_R);
+//    Serial.print("   ");
+//    Serial.println(robot_state);
     if(robot_state == turn_Around){
       forward();  
     }else if(robot_state == turn_Right){
@@ -514,16 +471,16 @@ void getPingData_R(){
   }
 
   int buffer_Helper(int state){
-     int state_total = 0;
-     for(int j =0; j<2; j++){
+     int  state_total = 0;
+     for(int j =0; j<49; j++){
        state_buffer[j] = state_buffer[j+1];
        state_total = state_total + state_buffer[j];  
      }
-     state_buffer[2] = state;
+     state_buffer[49] = state;
      state_total = state_total + state;
-     if(state_total == 3){
+     if(state_total == 50 && state_buffer[49] == 1){
        return turn_Right;  
-     }else if(state_total == 6){
+     }else if(state_total == 100){
        return turn_Left;
      } else{
        return traversal;  
@@ -568,12 +525,15 @@ void getPingData_R(){
       }
       
     }
+    Serial.print(theta_world_offset);
+    Serial.print("   ");
+    Serial.println(theta_world);
 
     if(right_path[current][0]==0){//means we are only turning no translate
       if( abs(theta_world_offset/theta_world) > 0.95 && abs(theta_world_offset/theta_world) < 1.05){
        if(current >= path_length){
          robot_state = traversal;
-         for(int j =0; j<3;j++){
+         for(int j =0; j<50;j++){
           state_buffer[j] = 0; 
          }
          current = -1;
@@ -595,7 +555,7 @@ void getPingData_R(){
         
          if(current >= path_length){
            robot_state = traversal;
-           for(int j =0; j<3;j++){
+           for(int j =0; j<50;j++){
             state_buffer[j] = 0; 
            }
            current = -1; 
@@ -631,10 +591,11 @@ void getPingData_R(){
 
       
     if(left_path[current][0]==0){//means we are only turning no translate
+      distance_ref = 50;
       if( abs(theta_world_offset/theta_world) > 0.95 && abs(theta_world_offset/theta_world) < 1.05){
        if(current >= path_length ){
          robot_state = traversal;
-         for(int j =0; j<3;j++){
+         for(int j =0; j<50;j++){
           state_buffer[j] = 0; 
          }
          current = -1; 
@@ -651,13 +612,13 @@ void getPingData_R(){
 
     
     //translation part
-    if(left_path[current][0]>0){
+    else if(left_path[current][0]>0){
       if((distance_stick/distance_ref) > 0.95 && (distance_stick/distance_ref)<1.05){
         
          if(current >= path_length){
            robot_state = traversal;
            current = -1;
-           for(int j =0; j<3;j++){
+           for(int j =0; j<50;j++){
             state_buffer[j] = 0; 
            } 
             digitalWrite(A2,LOW);
@@ -676,11 +637,11 @@ void getPingData_R(){
 
   void forward(){
       distance_stick = 0;
-      distance_ref = 25;
-      if(cm_R > 11.0){
-        theta_world_offset = theta_world - (3.14/64.0);
-      }else if(cm_R < 9.0){
-        theta_world_offset = theta_world + (3.14/64.0);
+      distance_ref = 50;
+      /if(cm_R > 15.25){
+        theta_world_offset = theta_world - (3.14/32.0);
+      }else if(cm_R < 14.75){
+        theta_world_offset = theta_world + (3.14/32.0);
       }else{
         theta_world_offset = theta_world;  
       }
